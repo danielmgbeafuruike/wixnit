@@ -1,0 +1,19 @@
+{
+    "name": "wixnit/core",
+    "description": "Awesome, slim, sleak php framework",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "wixnit\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Daniel Mgbeafuruike",
+            "email": "danidainid@yahoo.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
