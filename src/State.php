@@ -1,9 +1,9 @@
 <?php
-    namespace wixnit\Base;
+    namespace Wixnit\Base;
 
-	use wixnit\App\Model;
-    use wixnit\Data\Filter;
-    use wixnit\Data\Order;
+	use Wixnit\App\Model;
+    use Wixnit\Data\Filter;
+    use Wixnit\Data\Order;
 
     class State extends Model
 	{

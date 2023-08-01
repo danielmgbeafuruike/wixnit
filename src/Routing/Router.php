@@ -1,9 +1,9 @@
 <?php
 
-namespace wixnit\Routing;
+namespace Wixnit\Routing;
 
-use wixnit\App\Controller;
-use wixnit\App\View;
+use Wixnit\App\Controller;
+use Wixnit\App\View;
 
 class Router
 {

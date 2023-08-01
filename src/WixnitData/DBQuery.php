@@ -1,10 +1,10 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
 
-    use wixnit\Utilities\Range;
-    use wixnit\Utilities\Span;
-    use wixnit\Utilities\Timespan;
+    use Wixnit\Utilities\Range;
+    use Wixnit\Utilities\Span;
+    use Wixnit\Utilities\Timespan;
     use Exception;
     use mysqli;
 

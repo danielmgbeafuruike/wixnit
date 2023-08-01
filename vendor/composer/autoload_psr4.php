@@ -6,5 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'wixnit\\' => array($baseDir . '/src'),
+    'Wixnit\\' => array($baseDir . '/src'),
 );

@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Validation;
+    namespace Wixnit\Validation;
 
     class Validation
     {

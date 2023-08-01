@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Utilities;
+    namespace Wixnit\Utilities;
 
     class Convert
     {

@@ -1,9 +1,9 @@
 <?php
 
-    namespace wixnit\Routing;
+    namespace Wixnit\Routing;
 
-    use wixnit\Interfaces\IResponse;
-    use wixnit\Utilities\Convert;
+    use Wixnit\Interfaces\IResponse;
+    use Wixnit\Utilities\Convert;
 
     class Response implements IResponse
     {

@@ -1,11 +1,13 @@
 {
     "name": "wixnit/core",
     "description": "Awesome, slim, sleak php framework",
-    "type": "library",
+    "keywords": [
+        "framework"
+    ],
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "wixnit\\": "src/"
+            "Wixnit\\": "src/"
         }
     },
     "authors": [
@@ -14,6 +16,5 @@
             "email": "danidainid@yahoo.com"
         }
     ],
-    "minimum-stability": "stable",
     "require": {}
 }

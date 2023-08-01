@@ -1,10 +1,10 @@
 <?php
 
-    namespace wixnit\Utilities;
+    namespace Wixnit\Utilities;
 
-    use wixnit\Interfaces\IBase;
-    use wixnit\Data\DBFieldType;
-    use wixnit\Data\Interfaces\ISerializable;
+    use Wixnit\Interfaces\IBase;
+    use Wixnit\Data\DBFieldType;
+    use Wixnit\Data\Interfaces\ISerializable;
 
 
     class WixDate implements IBase, ISerializable

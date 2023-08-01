@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\Utilities;
+    namespace Wixnit\Utilities;
 
-    use wixnit\Interfaces\IBase;
+    use Wixnit\Interfaces\IBase;
 
     class Duration implements IBase
     {

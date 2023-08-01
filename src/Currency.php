@@ -1,9 +1,9 @@
 <?php
 
-    namespace wixnit\Base;
+    namespace Wixnit\Base;
 
-	use wixnit\App\Model;
-    use wixnit\WixnitData\Filter;
+	use Wixnit\App\Model;
+    use Wixnit\WixnitData\Filter;
 
     class Currency extends Model
 	{

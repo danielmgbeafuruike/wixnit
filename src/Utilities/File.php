@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\Utilities;
+    namespace Wixnit\Utilities;
 
-	use wixnit\Data\DB;
+	use Wixnit\Data\DB;
 
     class File
 	{

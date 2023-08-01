@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Interfaces;
+    namespace Wixnit\Interfaces;
 
     Interface IBase
     {

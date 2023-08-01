@@ -1,11 +1,11 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
-    use wixnit\Data\FilterBuilder;
-    use wixnit\Data\Order;
-    use wixnit\Data\Pagination;
-    use wixnit\Data\SearchBuilder;
+    use Wixnit\Data\FilterBuilder;
+    use Wixnit\Data\Order;
+    use Wixnit\Data\Pagination;
+    use Wixnit\Data\SearchBuilder;
 
     /**
      * @comment initialize requests, call appropriate methods, suppose to contain business logic

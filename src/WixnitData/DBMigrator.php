@@ -1,9 +1,9 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
     
-    use wixnit\App\PointerSavable;
-    use wixnit\App\Savable;
+    use Wixnit\App\PointerSavable;
+    use Wixnit\App\Savable;
     use mysqli;
     use ReflectionClass;
 

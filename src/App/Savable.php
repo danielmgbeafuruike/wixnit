@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
-    use wixnit\Data\DBConfig;
+    use Wixnit\Data\DBConfig;
     use mysqli;
 
     abstract class Savable extends BaseModel

@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Base;
+    namespace Wixnit\Base;
 
     use \stdClass;
     use \Exception;

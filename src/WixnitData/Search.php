@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
 
-    use wixnit\Utilities\Convert;
+    use Wixnit\Utilities\Convert;
 
     class Search
     {

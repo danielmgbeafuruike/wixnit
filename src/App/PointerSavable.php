@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
-    use wixnit\Data\DBTable;
+    use Wixnit\Data\DBTable;
     use mysqli;
 
     abstract class PointerSavable extends BaseModel

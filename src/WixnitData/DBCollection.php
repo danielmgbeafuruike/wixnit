@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
 
-    use wixnit\Utilities\Span;
+    use Wixnit\Utilities\Span;
 
     class DBCollection implements \Countable, \ArrayAccess
     {

@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Data\Interfaces;
+    namespace Wixnit\Data\Interfaces;
 
     interface ISerializable
     {

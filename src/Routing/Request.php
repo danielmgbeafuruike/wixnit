@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\Routing;
-    use wixnit\Interfaces\IRequest;
-    use wixnit\Utilities\Convert;
+    namespace Wixnit\Routing;
+    use Wixnit\Interfaces\IRequest;
+    use Wixnit\Utilities\Convert;
     use Exception;
 
     class Request implements IRequest

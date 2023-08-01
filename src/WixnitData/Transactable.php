@@ -1,14 +1,14 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
 
-    use wixnit\Utilities\Convert;
-    use wixnit\Utilities\Random;
-    use wixnit\Utilities\Range;
-    use wixnit\Utilities\Span;
-    use wixnit\Utilities\Timespan;
-    use wixnit\Utilities\WixDate;
-    use wixnit\Data\Interfaces\ISerializable;
+    use Wixnit\Utilities\Convert;
+    use Wixnit\Utilities\Random;
+    use Wixnit\Utilities\Range;
+    use Wixnit\Utilities\Span;
+    use Wixnit\Utilities\Timespan;
+    use Wixnit\Utilities\WixDate;
+    use Wixnit\Data\Interfaces\ISerializable;
     use ReflectionClass;
 
     abstract class Transactable extends Mappable

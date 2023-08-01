@@ -1,8 +1,8 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
-    use wixnit\Data\Transactable;
+    use Wixnit\Data\Transactable;
 
     abstract class BaseModel extends Transactable
     {

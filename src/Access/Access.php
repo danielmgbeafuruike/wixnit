@@ -1,9 +1,9 @@
 <?php
 
-    namespace wixnit\Access;
+    namespace Wixnit\Access;
 
-    use wixnit\Data\DBFieldType;
-    use wixnit\Data\Interfaces\ISerializable;
+    use Wixnit\Data\DBFieldType;
+    use Wixnit\Data\Interfaces\ISerializable;
 
     class Access implements ISerializable
     {

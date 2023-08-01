@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
     class Component
     {

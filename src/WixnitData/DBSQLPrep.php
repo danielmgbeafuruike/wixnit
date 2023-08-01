@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Data;
+    namespace Wixnit\Data;
 
     class DBSQLPrep
     {

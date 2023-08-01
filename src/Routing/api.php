@@ -1,6 +1,6 @@
 <?php
 
-    namespace wixnit\Routing;
+    namespace Wixnit\Routing;
 
     class api
     {

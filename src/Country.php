@@ -1,8 +1,8 @@
 <?php
-    namespace wixnit;
+    namespace Wixnit;
 
-	use wixnit\App\Model;
-    use wixnit\Data\Filter;
+	use Wixnit\App\Model;
+    use Wixnit\Data\Filter;
 
     class Country extends Model
 	{

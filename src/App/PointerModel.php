@@ -1,9 +1,9 @@
 <?php
 
-    namespace wixnit\App;
+    namespace Wixnit\App;
 
-    use wixnit\Data\DBCollection;
-    use wixnit\Data\DBConfig;
+    use Wixnit\Data\DBCollection;
+    use Wixnit\Data\DBConfig;
     use mysqli;
 
     abstract class PointerModel extends BaseModel
