@@ -1,6 +1,6 @@
 <?php
 
-    namespace Wixnit\Base;
+    namespace Wixnit;
 
     use \stdClass;
     use \Exception;
@@ -12,11 +12,14 @@
         public $Altitude = 0.00;
         public $Speed = 0.0;
 
+        public string $CountryCode = "";
+
         //propertie that will be sahred based on whether they exist or not
         protected $Country = "";
         protected $State = "";
         protected $City = "";
         protected $Address = "";
+
 
 
         public function getState()

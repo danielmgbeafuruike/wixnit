@@ -1,9 +1,9 @@
 <?php
 
-    namespace Wixnit\Base;
+    namespace Wixnit;
 
 	use Wixnit\App\Model;
-    use Wixnit\WixnitData\Filter;
+    use Wixnit\Data\Filter;
 
     class Currency extends Model
 	{
@@ -35,12 +35,11 @@
         {
             $code = $location->CountryCode;
             $ret = Currency::ByCountry(Country::ByCode("us"));
-            $res = DB::GetDB()->query("SELECT currencyid FROM currency WHERE country_code='$code'");
+            $res = Currency::Get(new Filter(["country_code"=>$code]));
 
-            if($res->num_rows > 0)
+            if($res->Count() > 0)
             {
-                $row = $res->fetch_assoc();
-                $ret = new Currency($row['currencyid']);
+                $ret = $res;
             }
             return $ret;
         }

@@ -30,4 +30,9 @@
                 throw(new Exception("Unable to load config. The config file <b>".$path."</b> those not exist"));
             }
         }
+
+        public static function setDBConfig(DBConfig $dbconfig)
+        {
+            $GLOBALS["WIXNIT_SQL_Connection_Credentials"] = $dbconfig;
+        }
     }

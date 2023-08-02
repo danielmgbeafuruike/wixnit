@@ -1,5 +1,5 @@
 <?php
-    namespace Wixnit\Base;
+    namespace Wixnit;
 
 	use Wixnit\App\Model;
     use Wixnit\Data\Filter;
