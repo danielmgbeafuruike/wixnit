@@ -2,14 +2,15 @@
 
     namespace Wixnit\Data;
 
-    use mysqli;
+use Exception;
+use mysqli;
 
     class DBConfig
     {
-        protected string $dbServer = "localhost";
-        protected string $dbName = "alphacheq_collections";
+        protected string $dbServer = "";
+        protected string $dbName = "";
         protected string $dbPassword = "";
-        protected string  $dbUsername = "root";
+        protected string  $dbUsername = "";
 
         private ?mysqli $conn = null;
 
@@ -38,20 +39,31 @@
             }
             else
             {
-                $this->conn = new mysqli($this->dbServer, $this->dbUsername, $this->dbPassword, $this->dbName);
+                if(($this->dbName != "") && ($this->dbUsername != "") && ($this->dbServer != ""))
+                {
+                    $this->conn = new mysqli($this->dbServer, $this->dbUsername, $this->dbPassword, $this->dbName);
 
-                if($this->conn->connect_error)
-                {
-                    throw (new \Exception("Could not connect to the database"));
+                    if($this->conn->connect_error)
+                    {
+                        throw (new \Exception("Could not connect to the database"));
+                    }
+                    else
+                    {
+                        return $this->conn;
+                    }
                 }
-                else
+                else if(isset($GLOBALS["WIXNIT_SQL_Connection_Credentials"]))
                 {
-                    return $this->conn;
+                    if($GLOBALS["WIXNIT_SQL_Connection_Credentials"] instanceof DBConfig)
+                    {
+                        return $GLOBALS["WIXNIT_SQL_Connection_Credentials"]->GetConnection();
+                    }
                 }
+                throw(new Exception("No SQL connection credentials. Uable to intialize mysql Connection"));
             }
         }
 
-        public static function Init($hostname, $username, $password, $database): DBConfig
+        public static function Init(string $hostname, string $username, string $password, string $database): DBConfig
         {
             $config = new DBConfig();
             $config->dbServer = $hostname;
@@ -67,5 +79,4 @@
             $ret->conn = $mysqli;
             return $ret;
         }
-
     }

@@ -1,6 +1,8 @@
 <?php
 
     namespace Wixnit\Data;
+
+    use Exception;
     use \mysqli;
 
     class DB
@@ -32,7 +34,7 @@
             }
             catch (\Exception $e)
             {
-
+                throw($e);
             }
             return $ret;
         }

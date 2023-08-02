@@ -7,7 +7,7 @@ namespace Composer\Autoload;
 class ComposerStaticInit7429c28658bd2140a54805130d3e13af
 {
     public static $prefixLengthsPsr4 = array (
-        'w' => 
+        'W' => 
         array (
             'Wixnit\\' => 7,
         ),
