@@ -415,6 +415,9 @@
                         {
                             $result = $countOperation->get_result();
                             $ret->Count = $result->fetch_array()[0];
+
+                            $ret->Start = (($this->pagination->Offset + 1) > 0) ? ($this->pagination->Offset + 1) : 1;
+                            $ret->Stop = ($this->pagination->Offset + $this->pagination->Limit);
                         }
                         else
                         {
@@ -446,6 +449,9 @@
                 {
                     $res = $this->db->db->query($countQuery);
                     $ret->Count = $res->fetch_array()[0];
+
+                    $ret->Start = (($this->pagination->Offset + 1) > 0) ? ($this->pagination->Offset + 1) : 1;
+                    $ret->Stop = ($this->pagination->Offset + $this->pagination->Limit);
                 }
                 else
                 {

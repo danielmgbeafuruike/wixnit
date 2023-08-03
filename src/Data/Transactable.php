@@ -302,7 +302,14 @@
                 $obj->fromDBResult($result->Data[$i]);
 
                 $ret->List[] = $obj;
-                $ret->TotalRowCount = $result->Count;
+            }
+            $ret->TotalRowCount = $result->Count;
+            $ret->Collectionspan->Start = $result->Start;
+            $ret->Collectionspan->Stop = $result->Stop;
+
+            if($pgn != null)
+            {
+                $ret->Meta = DBCollectionMeta::ByPagination($result->Count, $pgn);
             }
             return $ret;
         }
