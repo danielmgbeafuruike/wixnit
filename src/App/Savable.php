@@ -8,6 +8,7 @@
     abstract class Savable extends BaseModel
     {
         private bool $Initialization = true;
+        protected bool $ForceAutoGenId = false;
 
         function __construct(bool $Initialize=true)
         {

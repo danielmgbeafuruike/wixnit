@@ -3,7 +3,6 @@
     namespace Wixnit\App;
 
     use Wixnit\Data\DBCollection;
-    use Wixnit\Data\DBConfig;
     use mysqli;
 
     abstract class PointerModel extends BaseModel
