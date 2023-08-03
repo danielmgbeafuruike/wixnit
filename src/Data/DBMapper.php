@@ -154,8 +154,11 @@
             //$v =  $this->DB->query("SELECT 1 FROM ".$tableName." LIMIT 1");
             //return ($v != false);
 
-            $v = $this->DB->query("SELECT count((1)) as `ct` FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='$tableName'");
-            return $v->fetch_array()[0] > 0;
+            //$v = $this->DB->query("SELECT count((1)) as `ct` FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='$tableName'");
+            //return $v->fetch_array()[0] > 0;
+
+            $v = $this->DB->query("SHOW TABLES LIKE '$tableName'");
+            return $v->num_rows > 0;
         }
 
         /**
