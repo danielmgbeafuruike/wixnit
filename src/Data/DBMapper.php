@@ -53,12 +53,6 @@
             {
                 $currentImage = $this->fromTable($tableImage->Name);
 
-                if($currentImage->Name == "country")
-                {
-                    //header("Content-Type: application/json");
-                    //die(json_encode($currentImage));
-                }
-
                 //first do the renaming
                 for($i = 0; $i < count($currentImage->Fields); $i++)
                 {
