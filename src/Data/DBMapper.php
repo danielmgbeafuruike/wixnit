@@ -53,6 +53,12 @@
             {
                 $currentImage = $this->fromTable($tableImage->Name);
 
+                if($currentImage->Name == "country")
+                {
+                    //header("Content-Type: application/json");
+                    //die(json_encode($currentImage));
+                }
+
                 //first do the renaming
                 for($i = 0; $i < count($currentImage->Fields); $i++)
                 {
@@ -102,19 +108,21 @@
                             }
                             else
                             {
-                                $this->removeAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name);
+                                $this->removeAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name, $tableImage->Fields[$i]->Type);
                             }
                         }
-
 
                         //check primary key field
                         if($f->IsPrimary != $tableImage->Fields[$i]->IsPrimary)
                         {
-                            $this->removePrimaryKey($tableImage->Name);
-
                             if($tableImage->Fields[$i]->IsPrimary)
                             {
                                 $this->setPrimaryKey($tableImage->Name, $tableImage->Fields[$i]->Name);
+                            }
+                            else
+                            {
+                                $this->removeAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name, $tableImage->Fields[$i]->Type);
+                                //$this->removePrimaryKey($tableImage->Name);
                             }
                         }
                     }
@@ -178,7 +186,10 @@
          */
         public function removePrimaryKey(string $tableName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY");
+            if($this->hasPrimaryKey($tableName))
+            {
+                $this->DB->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY");
+            }
         }
 
         /**
@@ -188,9 +199,12 @@
          * @return void
          * @comment remove auto increment directive from a column on the table
          */
-        public function removeAutoIncrement(string $tableName, string $columnName)
+        public function removeAutoIncrement(string $tableName, string $columnName, string $columnType)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." MODIFY ".$columnName." NOT NULL");
+            if(strtolower($columnType) == "int")
+            {
+                $this->DB->query("ALTER TABLE ".$tableName." MODIFY ".$columnName." ".strtoupper($columnType)." NOT NULL");
+            }
         }
 
         /**
@@ -212,7 +226,14 @@
          */
         public function setPrimaryKey(string $tableName, string $columnName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." ADD PRIMARY KEY(".$columnName.")");
+            if($this->hasPrimaryKey($tableName))
+            {
+                $this->DB->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY, ADD PRIMARY KEY(".$columnName.")");
+            }
+            else
+            {
+                $this->DB->query("ALTER TABLE ".$tableName." ADD PRIMARY KEY(".$columnName.")");
+            }
         }
 
         /**
@@ -223,7 +244,21 @@
          */
         public  function setAutoIncrement(string $tableName, string $columnName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." MODIFY ".$columnName." INT NOT NULL AUTO_INCREMENT");
+            if($this->hasColumn($tableName, $columnName))
+            {
+                if($this->hasPrimaryKey($tableName))
+                {
+                    $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT");
+                }
+                else
+                {
+                    $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                }
+            }
+            else
+            {
+                $this->DB->query("ALTER TABLE ".$tableName." ADD COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+            }
         }
 
         /**
@@ -290,7 +325,7 @@
          */
         public function changeColumnType(string $tableName, string $columnName, string $newType)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." ALTER COLUMN ".$columnName." ".$newType);
+            $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." ".$newType);
         }
 
         /**
@@ -314,6 +349,22 @@
             $query .= ")";
 
             $this->DB->query($query);
+        }
+
+
+        //check if table has a primary key
+        public function hasPrimaryKey(string $tableName)
+        {
+            //$v = $this->DB->query("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE = 'PRIMARY KEY' AND TABLE_NAME='$tableName'");
+            $v = $this->DB->query("SHOW KEYS FROM $tableName WHERE Key_name = 'PRIMARY'");
+            return $v->num_rows > 0;
+        }
+
+        //check if table has a column
+        public function hasColumn(string $tableName, $columnName)
+        {
+            $v = $this->DB->query("SHOW COLUMNS FROM ".$tableName." LIKE '".$columnName."'");
+            return $v->num_rows > 0;
         }
 
 

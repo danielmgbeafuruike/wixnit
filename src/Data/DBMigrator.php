@@ -21,9 +21,13 @@
             $reflect = new ReflectionClass($object_or_class);
 
             $instance = null;
-            if(($reflect->isSubclassOf(Savable::class)) || ($reflect->isSubclassOf(PointerSavable::class)))
+            if($reflect->isSubclassOf(PointerSavable::class))
             {
                 $instance = $reflect->newInstance(new mysqli(), false);
+            }
+            else if($reflect->isSubclassOf(Savable::class))
+            {
+                $instance = $reflect->newInstance(false);
             }
             else
             {
