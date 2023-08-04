@@ -21,4 +21,16 @@
          * @comment the main content of the query operation
          */
         public array $Data = [];
+
+        /**
+         * @var int
+         * @comment position of the first item in the result
+         */
+        public int $Start = 0;
+
+        /**
+         * @var int
+         * @comment position of the last item in the result
+         */
+        public int $Stop = 0;
     }
