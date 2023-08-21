@@ -1480,13 +1480,18 @@
                                 {
                                     $id = $vals[$j]->GetLazyLoadId();
 
-                                    if($id != null)
+                                    if(($id != null) && (trim($id) != ""))
                                     {
                                         $ids[] = $id;
                                     }
                                 }
                             }
-                            $query = $query->Where(new Filter([strtolower(array_reverse(explode("\\", $instance->GetMap()->Name))[0])."id"=>$ids], Filter::OR));
+                            
+
+                            if(count($ids) > 0) 
+                            {
+                                $query = $query->Where(new Filter([strtolower(array_reverse(explode("\\", $instance->GetMap()->Name))[0])."id"=>$ids], Filter::OR));
+                            }
                             $result = $query->Get();
 
                             $ret = [];

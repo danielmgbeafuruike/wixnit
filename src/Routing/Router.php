@@ -33,7 +33,7 @@ class Router
     function __construct($path=null, $dataRoutes=null)
     {
         $this->dataRoute = (is_array($dataRoutes) ? $dataRoutes : []);
-        $this->requestURL = trim(parse_url(($path != null) ? $path : ($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? "")))['path'], "/");
+        $this->requestURL = trim(parse_url(($path != null) ? $path : ($_SERVER['REQUEST_URI'] ?? ($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? ""))))['path'], "/");
         $this->requestURL = $this->stripDataPath($this->requestURL);
         $paths = explode("/", $this->requestURL);
 
@@ -173,6 +173,7 @@ class Router
                     }
                     if($this->errorPagePath != "")
                     {
+                        http_response_code(404);
                         require_once ($this->errorPagePath);
                     }
                     else
@@ -225,6 +226,7 @@ class Router
                     {
                         if($this->errorPagePath != "")
                         {
+                            http_response_code(404);
                             require_once ($this->errorPagePath);
                         }
                         else
@@ -241,6 +243,7 @@ class Router
                 {
                     if($this->errorPagePath != "")
                     {
+                        http_response_code(404);
                         require_once ($this->errorPagePath);
                     }
                     else
@@ -484,20 +487,20 @@ class Router
 
     private function showResourceNotFound()
     {
+        http_response_code(404);
         echo "
-                <!DOCTYPE html>
-                <html>
-                    <head>
-                        <title>Error : : Not Found</title>
-                    </head>
-                    <body style='text-align: center;'>
-                        <h1 style='color: dimgray; font-family: Arial; font-size: 3em;'>404</h1>
-                        <h3 style='color: lightgray; font-family: Segoe UI; font-weight: normal;'>
-                            The requested page was not found
-                        </h3>
-                    </body>
-                </html>";
-
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Error : : Not Found</title>
+                </head>
+                <body style='text-align: center;'>
+                    <h1 style='color: dimgray; font-family: Arial; font-size: 3em;'>404</h1>
+                    <h3 style='color: lightgray; font-family: Segoe UI; font-weight: normal;'>
+                        The requested page was not found
+                    </h3>
+                </body>
+            </html>";
     }
 
     /**
