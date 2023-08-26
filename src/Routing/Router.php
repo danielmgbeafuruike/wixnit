@@ -33,7 +33,7 @@ class Router
     function __construct($path=null, $dataRoutes=null)
     {
         $this->dataRoute = (is_array($dataRoutes) ? $dataRoutes : []);
-        $this->requestURL = trim(parse_url(($path != null) ? $path : ($_SERVER['REQUEST_URI'] ?? ($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? ""))))['path'], "/");
+        $this->requestURL = trim(parse_url(($path != null) ? $path : (($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? "")) ?? $_SERVER['REQUEST_URI']))['path'], "/");
         $this->requestURL = $this->stripDataPath($this->requestURL);
         $paths = explode("/", $this->requestURL);
 
