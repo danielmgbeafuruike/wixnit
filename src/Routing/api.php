@@ -47,7 +47,7 @@
                     $response_status = ResponseCode::OK;
                     break;
                 default:
-                    $response_status = responseCode::OK;
+                    $response_status = ResponseCode::OK;
             }
 
             http_response_code($response_status);

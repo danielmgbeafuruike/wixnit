@@ -58,7 +58,7 @@
             return  $this->List[$offset];
         }
 
-        public function offsetSet($offset, $value)
+        public function offsetSet(mixed $offset, mixed $value): void
         {
             if(is_null($offset))
             {
@@ -70,7 +70,7 @@
             }
         }
 
-        public function offsetUnset($offset)
+        public function offsetUnset(mixed $offset): void
         {
             unset($this->List[$offset]);
         }
