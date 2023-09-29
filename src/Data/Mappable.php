@@ -3,8 +3,8 @@
     namespace Wixnit\Data;
 
     use ReflectionClass;
-use ReflectionObject;
-use stdClass;
+    use ReflectionObject;
+    use stdClass;
 
     abstract class Mappable
     {

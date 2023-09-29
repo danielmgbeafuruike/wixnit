@@ -10,6 +10,7 @@
     use Wixnit\Utilities\WixDate;
     use Wixnit\Data\Interfaces\ISerializable;
     use ReflectionClass;
+use ReflectionEnum;
 
     abstract class Transactable extends Mappable
     {
@@ -110,7 +111,11 @@
                     }
                     else
                     {
-                        if(class_exists($this->map->PublicProperties[$i]->Type))
+                        if(enum_exists($this->map->PublicProperties[$i]->Type))
+                        {
+                            //cannot assign anything to an enumeration
+                        }
+                        else if(class_exists($this->map->PublicProperties[$i]->Type))
                         {
                             $objRef = new ReflectionClass($this->map->PublicProperties[$i]->Type);
 
@@ -242,6 +247,8 @@
                 //call on inserted event handler
                 $this->onInserted();
             }
+            //call the general saved method
+            $this->onSaved();
         }
 
         protected static function buildCollection($conn): DBCollection
@@ -563,6 +570,55 @@
                     {
                         $fieldProp->Type = DBFieldType::LongText;
                         $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                    }
+                    else if(enum_exists($prop->Type))
+                    {
+                        $ref = new ReflectionEnum($prop->Type);
+
+                        if($ref->isBacked())
+                        {
+                            $backedType = $ref->getBackingType();
+
+                            if($backedType != null)
+                            {
+                                if(strtolower($backedType->getName()) == "int")
+                                {
+                                    $fieldProp->Type = DBFieldType::Int;
+                                    $fieldProp->Length = 11;
+                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                }
+                                else if(strtolower($backedType->getName()) == "float")
+                                {
+                                    $fieldProp->Type = DBFieldType::Double;
+                                    $fieldProp->Length = 11;
+                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                }
+                                else if(strtolower($backedType->getName()) == "string")
+                                {
+                                    $fieldProp->Type = DBFieldType::Varchar;
+                                    $fieldProp->Length = 200;
+                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                }
+                                else if(strtolower($backedType->getName()) == "bool")
+                                {
+                                    $fieldProp->Type = DBFieldType::Int;
+                                    $fieldProp->Length = 11;
+                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                }
+                                else
+                                {
+                                    $fieldProp->Type = DBFieldType::Text;
+                                    $fieldProp->Length = 100;
+                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            $fieldProp->Type = DBFieldType::Text;
+                            $fieldProp->Length = 100;
+                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                        }
                     }
                     else if(class_exists($prop->Type))
                     {
@@ -1117,7 +1173,7 @@
                                 {
                                     $obj = $objRef->newInstance($this->db->GetConnection());
                                 }
-                                else
+                                else if(!enum_exists($prop->Type))
                                 {
                                     $obj = $objRef->newInstance();
                                 }
@@ -1137,13 +1193,38 @@
                                         $obj->fromDBResult($this->buildSubProperties($data, $prop->baseName), 1);
                                     }
                                 }
+                                else if(enum_exists($prop->Type))
+                                {
+                                    $enumRef = new ReflectionEnum($prop->Type);
+                                    $cases = $enumRef->getCases();
+
+                                    for($en = 0; $en < count($cases); $en++)
+                                    {
+                                        if($cases[$en]->getValue()->value == trim($data[strtolower($prop->baseName)], "\""))
+                                        {
+                                            $obj = $cases[$en]->getValue();
+                                            break;
+                                        }
+                                    }
+                                }
                                 else
                                 {
                                     //map data unto the object. data will most likely be json dumped
                                     $mapper = new ObjectMapper(json_decode($data[strtolower($prop->baseName)]));
                                     $obj = $mapper->mapTo($obj, $this->db);
                                 }
-                                $ref->getProperty($prop->Name)->setValue($this, $obj);
+
+                                if(enum_exists($prop->Type))
+                                {
+                                    if($obj != null)
+                                    {
+                                        $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                    }
+                                }
+                                else
+                                {
+                                    $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                }
                             }
                             else if($prop->Type == "int")
                             {

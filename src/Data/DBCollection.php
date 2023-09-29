@@ -49,7 +49,7 @@
             return isset($this->List[$offset]);
         }
 
-        public function offsetGet($offset)
+        public function offsetGet(mixed $offset): mixed
         {
             if(!isset($this->List[$offset]))
             {
