@@ -153,6 +153,7 @@ class Router
     public function MapRoutes()
     {
         $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
+        $this->CollectRequestArgs();
 
         for($i = 0; $i < count($this->routes); $i++)
         {
@@ -185,6 +186,8 @@ class Router
                 {
                     $ref = new \ReflectionClass($this->routes[$i]['arg']);
                     $instance = (($this->routes[$i]['arg'] instanceof Controller) ? $this->routes[$i]['arg'] : $ref->newInstance());
+
+                    $this->CollectRequestArgs();
 
                     if($this->routes[$i]['call'] != null)
                     {
@@ -566,4 +569,13 @@ class Router
         //die($path);
         return trim($path, '/');
     }
+
+                        private function CollectRequestArgs()
+                        {
+                                                            $keys = array_keys($_REQUEST);
+                                                            for($i = 0; $i < count($keys); $i++)
+       {
+                                                                            $this->routedArgs[$keys[$i]] = $_REQUEST[$keys[$i]];
+                                                            }
+                        }
 }
