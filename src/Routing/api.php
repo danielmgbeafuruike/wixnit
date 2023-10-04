@@ -12,6 +12,7 @@
         const forbidden = "forbidden";
         const access_denied = "access_denied";
         const authentication_required = "authentication_required";
+        const payment_required = "payment_required";
 
         public static function Deserializepayload(): array
         {
@@ -43,11 +44,17 @@
                 case api::not_found:
                     $response_status = ResponseCode::NOT_FOUND;
                     break;
+                case api::payment_required:
+                    $response_status = ResponseCode::PAYMENT_REQUIRED;
+                    break;
                 case api::authentication_required:
+                    $response_status = ResponseCode::UNAUTHORIZED;
+                    break;
+                case api::success:
                     $response_status = ResponseCode::OK;
                     break;
                 default:
-                    $response_status = ResponseCode::OK;
+                    $response_status = $status;
             }
 
             http_response_code($response_status);
@@ -75,7 +82,7 @@
             );
         }
 
-        public  static function ok($message="", $data=null, $headers=[])
+        public  static function Ok($message="", $data=null, $headers=[])
         {
             api::respond(
                 api::success,
