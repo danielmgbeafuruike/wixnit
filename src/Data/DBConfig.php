@@ -2,8 +2,8 @@
 
     namespace Wixnit\Data;
 
-use Exception;
-use mysqli;
+    use Exception;
+    use mysqli;
 
     class DBConfig
     {
@@ -54,12 +54,23 @@ use mysqli;
                 }
                 else if(isset($GLOBALS["WIXNIT_SQL_Connection_Credentials"]))
                 {
+                    
+
                     if($GLOBALS["WIXNIT_SQL_Connection_Credentials"] instanceof DBConfig)
                     {
-                        return $GLOBALS["WIXNIT_SQL_Connection_Credentials"]->GetConnection();
+                        $globalConfig = $GLOBALS["WIXNIT_SQL_Connection_Credentials"];
+
+                        if(($globalConfig->dbName != "") && ($globalConfig->dbUsername != "") && ($globalConfig->dbServer != ""))
+                        {
+                            return $GLOBALS["WIXNIT_SQL_Connection_Credentials"]->GetConnection();
+                        }
+                        else
+                        {
+                            throw(new Exception("Invalid SQL connection credentials. Unable to intialize mysql Connection"));
+                        }
                     }
                 }
-                throw(new Exception("No SQL connection credentials. Uable to intialize mysql Connection"));
+                throw(new Exception("No SQL connection credentials. Unable to intialize mysql Connection"));
             }
         }
 

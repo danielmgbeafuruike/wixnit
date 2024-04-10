@@ -2,6 +2,8 @@
 
     namespace Wixnit\Data;
 
+
+    use ReflectionEnum;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
@@ -179,8 +181,8 @@
 
                                 if(!($this->values[$i]->Value[$k] instanceof fieldName))
                                 {
-                                    $ret->Values[] = $this->values[$i]->Value[$k];
-                                    $ret->Types[] =  is_string($this->values[$i]->Value[$k]) ? "s" : (is_float($this->values[$i]->Value[$k]) ? "d" : "i");
+                                    $ret->Values[] = (($this->values[$i]->Value[$k] instanceof \UnitEnum) ? self::GetEnumValue($this->values[$i]->Value[$k]) : $this->values[$i]->Value[$k]);
+                                    $ret->Types[] =  (($this->values[$i]->Value[$k] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]->Value[$k]) :  (is_string($this->values[$i]->Value[$k]) ? "s" : (is_float($this->values[$i]->Value[$k]) ? "d" : "i")));
                                 }
                             }
                         }
@@ -190,8 +192,8 @@
 
                             if(!($this->values[$i] instanceof fieldName))
                             {
-                                $ret->Values[] = $this->values[$i];
-                                $ret->Types[] =  is_string($this->values[$i]) ? "s" : (is_float($this->values[$i]) ? "d" : "i");
+                                $ret->Values[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumValue($this->values[$i]) : $this->values[$i]);
+                                $ret->Types[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]) :  (is_string($this->values[$i]) ? "s" : (is_float($this->values[$i]) ? "d" : "i")));
                             }
                         }
                     }
@@ -199,6 +201,56 @@
             }
             $ret->Query .= " ";
             return $ret;
+        }
+
+        public static function GetEnumBackingTypeDBCharacter(\UnitEnum $value): string
+        {
+            $ref = new ReflectionEnum($value);
+
+            if($ref->isBacked())
+            {
+                $type = strtolower($ref->getBackingType());
+
+                if($type == "int")
+                {
+                    return "i";
+                }
+                else if(($type == "float") || ($type == "double"))
+                {
+                    return "d";
+                }
+                else
+                {
+                    return "s";
+                }
+            }
+            else
+            {
+                return "s";
+            }
+        }
+
+        public static function GetEnumValue(\UnitEnum $value)
+        {
+            if(isset($value->value))
+            {
+                return $value->value;
+            }
+            else
+            {
+                $ref = new ReflectionEnum($value);
+
+                if($ref->isBacked())
+                {
+                    $backing = $ref->getBackingType();
+
+                    if((strtolower($backing) == "int") || (strtolower($backing) == "float") || (strtolower($backing) == "double") || strtolower($backing) == "bool")
+                    {
+                        return -1;
+                    }
+                }
+                return "";
+            }
         }
 
         public static function ByCreationDate($list, Timespan $timespan): array

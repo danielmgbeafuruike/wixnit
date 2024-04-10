@@ -240,7 +240,7 @@ class Router
                 }
                 else if((is_string($this->routes[$i]['arg']) && function_exists($this->routes[$i]['arg'])) || (is_object($this->routes[$i]['arg']) && ($this->routes[$i]['arg'] instanceof \Closure)))
                 {
-                    $this->routes[$i]['arg']($_REQUEST);
+                    $this->routes[$i]['arg']($this->routedArgs);
                 }
                 else
                 {

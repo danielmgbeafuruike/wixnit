@@ -10,7 +10,7 @@
     use Wixnit\Utilities\WixDate;
     use Wixnit\Data\Interfaces\ISerializable;
     use ReflectionClass;
-use ReflectionEnum;
+    use ReflectionEnum;
 
     abstract class Transactable extends Mappable
     {
@@ -296,6 +296,17 @@ use ReflectionEnum;
                     $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
                     $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
                 }
+                else if($args[$i] instanceof distinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->Distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->GroupBy($args[$i]);
+                }
             }
             $result = $instance->buildJoins($query)->Get();
 
@@ -367,6 +378,17 @@ use ReflectionEnum;
                     $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
                     $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
                 }
+                else if($args[$i] instanceof distinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->Distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->GroupBy($args[$i]);
+                }
             }
             $result = $instance->buildJoins($query)->Get();
 
@@ -428,6 +450,17 @@ use ReflectionEnum;
                     $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
                     $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
                 }
+                else if($args[$i] instanceof distinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->Distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->GroupBy($args[$i]);
+                }
             }
             return $instance->buildJoins($query)->Count();
         }
@@ -474,6 +507,17 @@ use ReflectionEnum;
                 {
                     $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
                     $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
+                }
+                else if($args[$i] instanceof distinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->Distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->GroupBy($args[$i]);
                 }
             }
             return $instance->buildJoins($query)->Count();
@@ -932,7 +976,74 @@ use ReflectionEnum;
                         }
                         else
                         {
-                            if(is_object($val))
+                            if(enum_exists($prop->Type))
+                            {
+                                $ref = new ReflectionEnum($prop->Type);
+
+                                if($ref->isBacked())
+                                {
+                                    if($ref->getBackingType() == "int")
+                                    {
+                                        if(isset($val->value))
+                                        {
+                                            $ret[strtolower($prop->baseName)] = intval($val->value);
+                                        }
+                                        else
+                                        {
+                                            $ret[strtolower($prop->baseName)] = -1;
+                                        }
+                                    }
+                                    else if($ref->getBackingType() == "string")
+                                    {
+                                        if(isset($val->value))
+                                        {
+                                            $ret[strtolower($prop->baseName)] = strval($val->value);
+                                        }
+                                        else
+                                        {
+                                            $ret[strtolower($prop->baseName)] = "";
+                                        }
+                                    }
+                                    else if($ref->getBackingType() == "float")
+                                    {
+                                        if(isset($val->value))
+                                        {
+                                            $ret[strtolower($prop->baseName)] = floatval($val->value);
+                                        }
+                                        else
+                                        {
+                                            $ret[strtolower($prop->baseName)] = -1;
+                                        }
+                                    }
+                                    else if($ref->getBackingType() == "double")
+                                    {
+                                        if(isset($val->value))
+                                        {
+                                            $ret[strtolower($prop->baseName)] = doubleval($val->value);
+                                        }
+                                        else
+                                        {
+                                            $ret[strtolower($prop->baseName)] = -1;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        $ret[strtolower($prop->baseName)] = $val->value;
+                                    }
+                                }
+                                else
+                                {
+                                    if(isset($val->value))
+                                    {
+                                        $ret[strtolower($prop->baseName)] = $val->value;
+                                    }
+                                    else
+                                    {
+                                        $ret[strtolower($prop->baseName)] = "";
+                                    }
+                                }
+                            }
+                            else if(is_object($val))
                             {
                                 if((new ReflectionClass($val))->implementsInterface(ISerializable::class))
                                 {

@@ -21,6 +21,8 @@
         protected array $joins = [];
         private array $joined_tables = [];
 
+        private array $distinct_on = [];
+        private string $group_by = "";
 
         protected array $selectFields = [];
 
@@ -207,7 +209,21 @@
 
         public function Distinct($field=null): DBQuery
         {
+            $this->distinct_on[] = $field;
             return  $this;
+        }
+
+        public function GroupBy($field): DBQuery
+        {
+            if($field instanceof groupBy)
+            {
+                $this->group_by = $field->Value;
+            }
+            else
+            {
+                $this->group_by = $field;
+            }
+            return $this;
         }
 
         public function Not(DBQuery $query): DBQuery
@@ -373,11 +389,13 @@
 
             $fields = count($args) > 0 ? implode(", ", $args) : "*";
 
-            $this->query = "SELECT ".((($fields == "*") && (count($this->joins) > 0)) ? $this->buildFieldSelection() : $fields)." FROM ".$this->db->tableName." ";
+            $this->query = "SELECT ".$this->prepDistinct().((($fields == "*") && (count($this->joins) > 0)) ? $this->buildFieldSelection() : $fields)." FROM ".$this->db->tableName." ";
 
             $this->executeJoins();
 
             $this->executeOperations();
+
+            $this->prepGroupBy();
 
 
             //prepare count query
@@ -388,7 +406,11 @@
 
             $this->executeLimitsAndOrder();
 
-            //die($this->query);
+            if($this->db->tableName == "message")
+            {
+                //die($this->query);
+            }
+            
 
             if(count($this->args) > 0)
             {
@@ -396,7 +418,7 @@
 
                 if(is_bool($operation))
                 {
-                    die($this->query);
+                    //die($this->query);
                 }
 
                 $operation->bind_param($this->argTypes, ...$this->args);
@@ -414,7 +436,20 @@
                         if($countOperation->execute())
                         {
                             $result = $countOperation->get_result();
-                            $ret->Count = $result->fetch_array()[0];
+
+                            /*if($this->db->tableName == "message")
+                            {
+                                var_dump($result);
+                                die();
+                            }*/
+                            if($this->group_by != "")
+                            {
+                                $ret->Count = $result->num_rows;
+                            }
+                            else
+                            {
+                                $ret->Count = $result->fetch_array()[0];
+                            }
 
                             $ret->Start = (($this->pagination->Offset + 1) > 0) ? ($this->pagination->Offset + 1) : 1;
                             $ret->Stop = ($this->pagination->Offset + $this->pagination->Limit);
@@ -473,11 +508,13 @@
 
             $fields = count($args) > 0 ? implode(", ", $args) : "*";
 
-            $this->query = "SELECT COUNT(1) FROM ".$this->db->tableName." ";
+            $this->query = "SELECT ".((count($this->distinct_on) > 0) ? "COUNT(".$this->prepDistinct().")" : "COUNT(1)" )." FROM ".$this->db->tableName." ";
 
             $this->executeJoins();
 
             $this->executeOperations();
+
+            $this->prepGroupBy();
 
             if(count($this->args) > 0)
             {
@@ -790,6 +827,32 @@
             else
             {
                 return $op;
+            }
+        }
+
+        private function prepDistinct()
+        {
+            $ret = "";
+
+            if(count($this->distinct_on) > 0)
+            {
+                $ret .= " DISTINCT ";
+                $fields = "";
+
+                for($i = 0; $i < count($this->distinct_on); $i++)
+                {
+                    $fields .= ($fields != "" ? ", " : "").$this->distinct_on[$i];
+                }
+                $ret .= $fields.", ";
+            }
+            return $ret;
+        }
+
+        private function prepGroupBy()
+        {
+            if($this->group_by != "")
+            {
+                $this->query .= " GROUP BY ".$this->db->tableName.".".$this->group_by." ";
             }
         }
     }

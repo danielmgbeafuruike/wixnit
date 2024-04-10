@@ -4,20 +4,29 @@
 
     class SearchBuilder
     {
-        /**
-         * @var Search
-         */
         public $searches = [];
         protected int $operation = Filter::AND;
 
         public function getQuery($fields=[]): DBSQLPrep
         {
-            $ret = "(";
+            $ret = new DBSQLPrep();
+
+            $ret->Query = "(";
             for($i = 0; $i < count($this->searches); $i++)
             {
-                $ret.= ((trim($ret) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : ""). $this->searches[$i]->getQuery($fields);
+                $q = $this->searches[$i]->getQuery($fields);
+
+                $ret->Query.= ((trim($ret->Query) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : "").$q->Query;
+
+                for($x = 0; $x < count($q->Types); $x++)
+                {
+                    $ret->Values[] = $q->Values[$x];
+                    $ret->Types[] = $q->Types[$x];
+                }
             }
-            //return $ret.")";
+
+            $ret->Query .= ")";
+            return $ret;
         }
 
         public function add($search)
