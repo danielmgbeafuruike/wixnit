@@ -2,9 +2,11 @@
 
     namespace Wixnit\Data\Interfaces;
 
+    use Wixnit\Data\DBFieldType;
+
     interface ISerializable
     {
-        public function _DBType(): string;
+        public function _DBType(): DBFieldType;
 
         public function _Serialize();
 

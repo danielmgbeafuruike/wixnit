@@ -2,26 +2,26 @@
 
     namespace Wixnit\Data;
 
-    class DBFieldType
+    enum DBFieldType : string
     {
-        const Int = "int";
-        const Varchar = "varchar";
-        const Text = "text";
-        const LongText = "longtext";
-        const Double = "double";
-        const Float = "float";
-        const Date = "date";
-        const Decimal = "decimal";
-        const Enum = "enum";
-        const Char = "char";
-        const TimeStamp = "current_timestamp";
-        const TinyInt = "tinyint";
-        const Blob = "blob";
-        const BigInt = "bigint";
-        const Bit = "bit";
-        const LongBlob = "longblob";
-        const Year = "year";
-        const Time = "time";
-        const Set = "set";
-        const Geometry = "geometry";
+        case Int = "int";
+        case Varchar = "varchar";
+        case Text = "text";
+        case LongText = "longtext";
+        case Double = "double";
+        case Float = "float";
+        case Date = "date";
+        case Decimal = "decimal";
+        case Enum = "enum";
+        case Char = "char";
+        case TimeStamp = "current_timestamp";
+        case TinyInt = "tinyint";
+        case Blob = "blob";
+        case BigInt = "bigint";
+        case Bit = "bit";
+        case LongBlob = "longblob";
+        case Year = "year";
+        case Time = "time";
+        case Set = "set";
+        case Geometry = "geometry";
     }
