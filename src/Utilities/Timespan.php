@@ -103,4 +103,40 @@
             }
             return $ret;
         }
+
+        public function TrimStart($time=""): Timespan
+        {
+            $val = (($time == "") ? 0 : $this->stringToTimeSec($time));
+            $this->Start += $val;
+            return $this;
+        }
+
+        public function TrimEnd($time=""): Timespan
+        {
+            $val = (($time == "") ? 0 : $this->stringToTimeSec($time));
+            $this->Stop += $val;
+            return $this;
+        }
+
+        public function TrimStartEnd($time=""): Timespan
+        {
+            $this->TrimStart($time);
+            $this->TrimEnd($time);
+            return $this;
+        }
+
+
+        private function stringToTimeSec($time): int
+        {
+            $val = explode(":", $time);
+
+            if(count($val) == 2)
+            {
+                return ((Convert::ToInt($val[0]) * (60 * 60)) + (Convert::ToInt($val[1]) * 60));
+            }
+            else
+            {
+                return 0;
+            }
+        }
     }

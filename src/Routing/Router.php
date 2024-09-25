@@ -4,6 +4,7 @@ namespace Wixnit\Routing;
 
 use Wixnit\App\Controller;
 use Wixnit\App\View;
+use Wixnit\Enum\HTTPMethod;
 
 class Router
 {
@@ -153,7 +154,7 @@ class Router
     public function MapRoutes()
     {
         $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
-        $this->CollectRequestArgs();
+        $req = $this->buildRequest();
 
         for($i = 0; $i < count($this->routes); $i++)
         {
@@ -162,7 +163,7 @@ class Router
                 if($this->routes[$i]['arg'] instanceof View)
                 {
                     $instance = $this->routes[$i]['arg'];
-                    $instance->Render();
+                    $instance->Render($req);
                 }
                 else if($this->routes[$i]['arg'] instanceof Path)
                 {
@@ -187,42 +188,40 @@ class Router
                     $ref = new \ReflectionClass($this->routes[$i]['arg']);
                     $instance = (($this->routes[$i]['arg'] instanceof Controller) ? $this->routes[$i]['arg'] : $ref->newInstance());
 
-                    $this->CollectRequestArgs();
-
                     if($this->routes[$i]['call'] != null)
                     {
                         $callMethod = $this->routes[$i]['call'];
-                        $instance->$callMethod($this->routedArgs);
+                        $instance->$callMethod($req);
                     }
                     else if($instance instanceof Controller)
                     {
                         if($method == "POST")
                         {
-                            $instance->Create($this->routedArgs);
+                            $instance->Create($req);
                         }
                         else if($method == "PUT")
                         {
-                            $instance->Update($this->routedArgs);
+                            $instance->Update($req);
                         }
                         else if($method == "DELETE")
                         {
-                            $instance->Delete($this->routedArgs);
+                            $instance->Delete($req);
                         }
                         else if($method == "PATCH")
                         {
-                            $instance->Patch($this->routedArgs);
+                            $instance->Patch($req);
                         }
                         else if($method == "GET")
                         {
-                            $instance->Get($this->routedArgs);
+                            $instance->Get($req);
                         }
                         else if($method == "HEAD")
                         {
-                            $instance->Head($this->routedArgs);
+                            $instance->Head($req);
                         }
                         else if($method == "OPTION")
                         {
-                            $instance->Option($this->routedArgs);
+                            $instance->Option($req);
                         }
                     }
                     else
@@ -570,12 +569,87 @@ class Router
         return trim($path, '/');
     }
 
-                        private function CollectRequestArgs()
-                        {
-                                                            $keys = array_keys($_REQUEST);
-                                                            for($i = 0; $i < count($keys); $i++)
-       {
-                                                                            $this->routedArgs[$keys[$i]] = $_REQUEST[$keys[$i]];
-                                                            }
-                        }
+    private function buildRequest(): Request
+    {
+        $routedData = new FormData();
+        $postedData = new FormData();
+        $getData = new FormData();
+        $jsonData = new FormData();
+
+        $routedData->Args = $this->routedArgs;
+
+
+        //retriever POST data
+        $keys = array_keys($_POST);
+        $postArgs = [];
+        for($i = 0; $i < count($keys); $i++)
+        {
+            $postArgs[$keys[$i]] = $_POST[$keys[$i]];
+        }
+        $postedData->Args = $postArgs;
+
+
+        //retrieve GET data
+        $keys = array_keys($_GET);
+        $getArgs = [];
+        for($i = 0; $i < count($keys); $i++)
+        {
+            $getArgs[$keys[$i]] = $_GET[$keys[$i]];
+        }
+        $getData->Args = $getArgs;
+
+
+        // Read raw data from the php://input stream
+        $inputData = file_get_contents('php://input');
+        
+        $parsedData = [];
+
+        // Check for content type header to detect the type of data
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? 'text/plain';
+
+        if (strpos($contentType, 'application/json') !== false) 
+        {
+            $parsedData = json_decode($inputData, true);
+            if (json_last_error() !== JSON_ERROR_NONE) 
+            {
+                
+            }
+        } 
+        else if (strpos($contentType, 'application/xml') !== false || strpos($contentType, 'text/xml') !== false) 
+        {
+            // Parse XML data
+            $xml = simplexml_load_string($inputData, 'SimpleXMLElement', LIBXML_NOCDATA);
+            if ($xml === false) 
+            {
+                
+            }
+            // Convert SimpleXMLElement object to an associative array
+            $parsedData = json_decode(json_encode($xml), true);
+        } 
+        else if (strpos($contentType, 'application/x-www-form-urlencoded') !== false) 
+        {
+            // Parse URL-encoded data (like a standard HTML form)
+            parse_str($inputData, $parsedData);
+        }
+        else 
+        {
+            // Treat as plain text if no specific content type is provided
+            $parsedData['raw'] = $inputData;
+        }
+        $jsonData->Args = $parsedData;
+
+        return new Request($this->getMethod(), $routedData, $getData, $postedData, $jsonData);
+    }
+
+
+    private function getMethod(): HTTPMethod
+    {
+        $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
+
+        if(HTTPMethod::tryFrom($method))
+        {
+            return HTTPMethod::from($method);
+        }
+        return HTTPMethod::ANY;
+    }
 }

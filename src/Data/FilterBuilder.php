@@ -18,7 +18,7 @@
             for($i = 0; $i < count($this->filter); $i++)
             {
                 $p = $this->filter[$i]->getQuery();
-                $ret->Query .= ((trim($ret->Query) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : "").$p->Query;
+                $ret->Query .= ((trim($ret->Query) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : "")."(".$p->Query.")";
 
                 $ret->Types = array_merge($ret->Types, $p->Types);
                 $ret->Values = array_merge($ret->Values, $p->Values);

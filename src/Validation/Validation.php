@@ -4,6 +4,8 @@
 
     class Validation
     {
+        private array $arg_data = [];
+
         //protected fields to be used for validating and all
         protected array $values = [];
         protected array $valueValidations = [];
@@ -13,6 +15,14 @@
         public array $errorValues = [];
         public string $errorText = "";
         public array $errors = [];
+
+
+
+
+        public function __construct(array $request_data=null) 
+        {
+            $this->arg_data = ($request_data != null) ? $request_data : $this->arg_data;
+        }
 
         function addValues($args=[])
         {
@@ -36,7 +46,7 @@
                     $vs = explode("|", $this->valueValidations[$i]);
 
                     //check if the variable is set
-                    if(!isset($_REQUEST[$this->values[$i]]))
+                    if(!isset($this->arg_data[$this->values[$i]]))
                     {
                         if(in_array("required", $vs))
                         {
@@ -52,8 +62,8 @@
                          */
                         if(in_array("bool", $vs))
                         {
-                            if(($_REQUEST[$this->values[$i]] !== true) && ($_REQUEST[$this->values[$i]] !== false) && ($_REQUEST[$this->values[$i]] !== "true") &&
-                                ($_REQUEST[$this->values[$i]] !== "false") && ($_REQUEST[$this->values[$i]] !== "0") && ($_REQUEST[$this->values[$i]] !== "1"))
+                            if(($this->arg_data[$this->values[$i]] !== true) && ($this->arg_data[$this->values[$i]] !== false) && ($this->arg_data[$this->values[$i]] !== "true") &&
+                                ($this->arg_data[$this->values[$i]] !== "false") && ($this->arg_data[$this->values[$i]] !== "0") && ($this->arg_data[$this->values[$i]] !== "1"))
                             {
                                 $failed = true;
 
@@ -63,7 +73,7 @@
                         }
                         if(in_array("number", $vs))
                         {
-                            if(!is_int($_REQUEST[$this->values[$i]]) && !is_double($_REQUEST[$this->values[$i]]) && is_float($_REQUEST[$this->values[$i]]))
+                            if(!is_int($this->arg_data[$this->values[$i]]) && !is_double($this->arg_data[$this->values[$i]]) && is_float($this->arg_data[$this->values[$i]]))
                             {
                                 $failed = true;
 
@@ -73,7 +83,7 @@
                         }
                         if(in_array("string", $vs))
                         {
-                            if(!is_string($_REQUEST[$this->values[$i]]))
+                            if(!is_string($this->arg_data[$this->values[$i]]))
                             {
                                 $failed = true;
 
@@ -83,7 +93,7 @@
                         }
                         if(in_array("email", $vs))
                         {
-                            if(!filter_var($_REQUEST[$this->values[$i]], FILTER_VALIDATE_EMAIL))
+                            if(!filter_var($this->arg_data[$this->values[$i]], FILTER_VALIDATE_EMAIL))
                             {
                                 $failed = true;
 
@@ -93,7 +103,7 @@
                         }
                         if(in_array("phone", $vs))
                         {
-                            if(!preg_match('/^[0-9]{11}+$/', $_REQUEST[$this->values[$i]]))
+                            if(!preg_match('/^[0-9]{11}+$/', $this->arg_data[$this->values[$i]]))
                             {
                                 $failed = true;
 
@@ -103,7 +113,7 @@
                         }
                         if(in_array("url", $vs))
                         {
-                            if(!preg_match("/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*[-a-z0-9+&@#\/%=~_|]/i", $_REQUEST[$this->values[$i]]))
+                            if(!preg_match("/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*[-a-z0-9+&@#\/%=~_|]/i", $this->arg_data[$this->values[$i]]))
                             {
                                 $failed = true;
 
@@ -113,7 +123,7 @@
                         }
                         if(in_array("plain", $vs))
                         {
-                            if(!preg_match("/^[a-zA-Z-' ]*$/", $_REQUEST[$this->values[$i]]))
+                            if(!preg_match("/^[a-zA-Z-' ]*$/", $this->arg_data[$this->values[$i]]))
                             {
                                 $failed = true;
 
@@ -123,7 +133,7 @@
                         }
                         if(in_array("date", $vs))
                         {
-                            if((count(explode("/", $_REQUEST[$this->values[$i]])) != 3) && (count(explode("-", $_REQUEST[$this->values[$i]])) != 3))
+                            if((count(explode("/", $this->arg_data[$this->values[$i]])) != 3) && (count(explode("-", $this->arg_data[$this->values[$i]])) != 3))
                             {
                                 $failed = true;
 
@@ -133,7 +143,7 @@
                         }
                         if(in_array("time", $vs))
                         {
-                            if(count(explode(":", $_REQUEST[$this->values[$i]])) != 2)
+                            if(count(explode(":", $this->arg_data[$this->values[$i]])) != 2)
                             {
                                 $failed = true;
 

@@ -75,7 +75,7 @@
 
         public function todate()
         {
-            return new WixDate(strtotime(date("d/m/Y", $this->Value)));
+            return new WixDate(strtotime(date("m/d/Y", $this->Value)));
         }
 
 

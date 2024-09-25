@@ -2,6 +2,9 @@
 
     namespace Wixnit\Utilities;
 
+use SimpleXMLElement;
+use stdClass;
+
     class Convert
     {
         public static function ToInt($arg)
@@ -504,5 +507,43 @@
             }
 
             return $ret;
+        }
+
+        public static function ArrayToStdClass($array): stdClass
+        {
+            $object = new stdClass();
+            foreach ($array as $key => $value) {
+                if (is_array($value)) {
+                    $value = Convert::ArrayToStdClass($value);
+                }
+                $object->$key = $value;
+            }
+
+            return $object;
+        }
+
+
+        public static function StdClassToXML($data, $rootElement = 'root', $xml = null): string
+        {
+            if ($xml === null) 
+            {
+                $xml = new SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?><' . $rootElement . '/>');
+            }
+        
+            foreach ($data as $key => $value) 
+            {
+                // If value is an array or object, recursively process it
+                if (is_array($value) || is_object($value)) 
+                {
+                    $childNode = $xml->addChild($key);
+                    Convert::StdClassToXML($value, $rootElement, $childNode);
+                } 
+                else 
+                {
+                    // Add the value as a child element
+                    $xml->addChild($key, htmlspecialchars($value));
+                }
+            }
+            return $xml->asXML();
         }
     }
