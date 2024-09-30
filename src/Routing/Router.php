@@ -154,12 +154,14 @@ class Router
     public function MapRoutes()
     {
         $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
-        $req = $this->buildRequest();
+    
 
         for($i = 0; $i < count($this->routes); $i++)
         {
             if((($this->routes[$i]['method'] == $method) || ($this->routes[$i]['method'] == "*")) && $this->matchRoute($this->routes[$i]['path'], $this->requestURL))
             {
+                $req = $this->buildRequest();
+
                 if($this->routes[$i]['arg'] instanceof View)
                 {
                     $instance = $this->routes[$i]['arg'];
@@ -239,7 +241,7 @@ class Router
                 }
                 else if((is_string($this->routes[$i]['arg']) && function_exists($this->routes[$i]['arg'])) || (is_object($this->routes[$i]['arg']) && ($this->routes[$i]['arg'] instanceof \Closure)))
                 {
-                    $this->routes[$i]['arg']($this->routedArgs);
+                    $this->routes[$i]['arg']($req);
                 }
                 else
                 {
