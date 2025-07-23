@@ -14,30 +14,33 @@
      */
     abstract class Controller
     {
-        protected ?Pagination $Pagination = null;
-        protected ?FilterBuilder $Filters = null;
-        protected ?SearchBuilder $Searches = null;
-        protected ?Order $Order = null;
+        protected ?Pagination $pagination = null;
+        protected ?FilterBuilder $filters = null;
+        protected ?SearchBuilder $searches = null;
+        protected ?Order $order = null;
 
-        public function Get(Request $req): void {}
+        public function get(Request $req): void {}
 
-        public function Delete(Request $req): void {}
+        public function delete(Request $req): void {}
 
-        public function Create(Request $req): void {}
+        public function create(Request $req): void {}
 
-        public function Update(Request $req): void {}
+        public function update(Request $req): void {}
 
-        public function Patch(Request $req): void {}
+        public function patch(Request $req): void {}
 
-        public function Head(Request $req): void {}
+        public function head(Request $req): void {}
 
-        public function Option(Request $req): void {}
+        public function option(Request $req): void {}
 
 
-        /*
-        // Utility classes to be used within the controller to controll things 
-        */
-        protected function CloseConnection(Closure $sendDataTask =null, Closure $backgroundTask = null): void
+        /**
+         * Close the connection and send all the data to the output and then continue processing data in the backgroundTask closure
+         * @param \Closure|null $sendDataTask
+         * @param \Closure|null $backgroundTask
+         * @return void
+         */
+        protected function closeConnection(Closure $sendDataTask =null, Closure $backgroundTask = null): void
         {
             // Start output buffering
             ob_start();
