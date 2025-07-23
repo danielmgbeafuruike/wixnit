@@ -86,6 +86,21 @@
             return Convert::ToBool($this->ToInt());
         }
 
+        public function ToMinuites(): int
+        {
+            return $this->ToInt() / 60;
+        }
+
+        public function ToHours(): int
+        {
+            return $this->ToInt() / (60 * 60);
+        }
+
+        public function ToDays(): int
+        {
+            return $this->ToInt() / ((60 * 60) * 24);
+        }
+
 
         /**
          * @param WixDate
@@ -175,7 +190,7 @@
         static function Months($months): Duration
         {
             $ret = new Duration();
-            $ret->Months = $months;
+            $ret->Minutes = $months;
             return $ret;
         }
 

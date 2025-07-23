@@ -3,6 +3,7 @@
     namespace Wixnit\Data;
 
     use ReflectionClass;
+    use ReflectionEnum;
 
     class ObjectMapper extends Mappable
     {
@@ -39,20 +40,38 @@
                         $toName = $prop->Name;
                         $fromName = $this->Map->PublicProperties[$i]->Name;
 
+                        
                         if(class_exists($prop->Type))
                         {
-                            if((new ReflectionClass($prop->Type))->isSubclassOf(Transactable::class))
+                            if((new ReflectionClass($prop->Type))->isEnum())
                             {
-                                $innerInstance = (new ReflectionClass($prop->Type))->newInstance($db);
+                                $enumRef = new ReflectionEnum($prop->Type);
+                                $cases = $enumRef->getCases();
+
+                                for($en = 0; $en < count($cases); $en++)
+                                {
+                                    if($cases[$en]->getValue()->value == trim($this->object->$fromName, "\""))
+                                    {
+                                        $receiving_object->$toName = $cases[$en]->getValue();
+                                        break;
+                                    }
+                                }
                             }
                             else
                             {
-                                $innerInstance = (new ReflectionClass($prop->Type))->newInstance();
-                            }
-                            $innerMapper = new ObjectMapper($this->object->$fromName);
-                            $innerMapper->mapTo($innerInstance, $db);
+                                if((new ReflectionClass($prop->Type))->isSubclassOf(Transactable::class))
+                                {
+                                    $innerInstance = (new ReflectionClass($prop->Type))->newInstance($db);
+                                }
+                                else
+                                {
+                                    $innerInstance = (new ReflectionClass($prop->Type))->newInstance();
+                                }
+                                $innerMapper = new ObjectMapper($this->object->$fromName);
+                                $innerMapper->mapTo($innerInstance, $db);
 
-                            $receiving_object->$toName = $innerInstance;
+                                $receiving_object->$toName = $innerInstance;
+                            }
                         }
                         else
                         {
@@ -80,7 +99,7 @@
                     {
                         $object->$name = $objRef->newInstance($db);
                     }
-                    else
+                    else if(!$objRef->isEnum())
                     {
                         $object->$name = ObjectMapper::InitializeObject($objRef->newInstance(), $db);
                     }
