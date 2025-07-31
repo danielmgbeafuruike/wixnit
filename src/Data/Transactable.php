@@ -159,7 +159,6 @@
             $idProp->name = "id";
             $idProp->type = DBFieldType::INT;
             $idProp->isPrimary = true;
-            $idProp->isUnique = true;
             $idProp->autoIncrement = true;
             $image->AddField($idProp);
 
