@@ -2,32 +2,35 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\Enum\DBFieldType;
+    use Wixnit\Enum\DBJoin;
+    use Wixnit\Enum\FilterOperation;
+    use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
     use Wixnit\Utilities\Random;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
-    use Wixnit\Utilities\WixDate;
-    use Wixnit\Data\Interfaces\ISerializable;
+    use Wixnit\Utilities\Date;
     use ReflectionClass;
     use ReflectionEnum;
 
     abstract class Transactable extends Mappable
     {
-        public string $Id = "";
-        public WixDate $Created;
-        public WixDate $Modified;
-        public WixDate $Deleted;
+        public string $id = "";
+        public Date $created;
+        public Date $modified;
+        public Date $deleted;
 
-        protected bool $UseSoftDelete = false;
-        protected bool $ForceAutoGenId = true;
-        protected string $LazyLoadId = "";
+        protected bool $useSoftDelete = false;
+        protected bool $forceAutoGenId = true;
+        protected string $lazyLoadId = "";
 
-        protected array $Serialization = [];
-        protected array $Deserialization = [];
+        protected array $serialization = [];
+        protected array $deserialization = [];
 
-        protected array $Unique = [];
-        protected array $LongText = [];
+        protected array $unique = [];
+        protected array $longText = [];
 
 
         private array $joined_tables = [];
@@ -36,7 +39,7 @@
          * @var array
          * @comment this property is used for remapping so that fields can be properly initialized both from fields and other mapping
          */
-        protected array $RenamedProperties = [];
+        protected array $renamedProperties = [];
 
         protected DBConfig $db;
 
@@ -56,193 +59,56 @@
             parent::__construct();
 
             $this->db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $this->map = $this->GetMap();
-            $this->tableName = strtolower(array_reverse(explode("\\", $this->map->Name))[0]);
+            $this->map = $this->getMap();
+            $this->tableName = strtolower(array_reverse(explode("\\", $this->map->name))[0]);
             $this->idName = strtolower($this->tableName."id");
 
-            $this->InitializeObject($arg);
+            $this->initializeObject($arg);
 
             //call on created event handler
             $this->onCreated();
         }
 
-        private function InitializeObject($arg)
-        {
-            if($arg != null)
-            {
-                $query = $this->buildJoins(
-                    DBQuery::With(DB::Connect($this->db, $this->map->DBPrep()))
-                        ->Where(new Filter([$this->idName=>$arg, 'deleted'=>0]))
-                        ->Limit(1))
-                    ->Get();
-
-                if($query->Count > 0)
-                {
-                    //apply to object
-                    $this->fromDBResult($query->Data[0]);
-
-                    //fire event when object is initialized
-                    $this->onInitialized();
-                }
-                else
-                {
-                    $this->InitializeFields();
-                }
-            }
-            else
-            {
-                $this->InitializeFields();
-            }
-        }
-
-        private  function InitializeFields()
-        {
-            $db = $this->db->GetConnection();
-
-            for($i = 0; $i < count($this->map->PublicProperties); $i++)
-            {
-                $name = $this->map->PublicProperties[$i]->Name;
-
-                if((!isset($this->$name)) && (strtolower($name) != $this->idName))
-                {
-                    if(($this->map->PublicProperties[$i]->IsArray) || ($this->map->PublicProperties[$i]->Type == "array"))
-                    {
-                        $this->$name = [];
-                    }
-                    else
-                    {
-                        if(enum_exists($this->map->PublicProperties[$i]->Type))
-                        {
-                            //cannot assign anything to an enumeration
-                        }
-                        else if(class_exists($this->map->PublicProperties[$i]->Type))
-                        {
-                            $objRef = new ReflectionClass($this->map->PublicProperties[$i]->Type);
-
-                            if($objRef->isSubclassOf(Transactable::class))
-                            {
-                                $this->$name = $objRef->newInstance($db);
-                            }
-                            else
-                            {
-                                $this->$name = ObjectMapper::InitializeObject($objRef->newInstance());
-                            }
-                        }
-                        else
-                        {
-                            if(($this->map->PublicProperties[$i]->Type == "string") || ($this->map->PublicProperties[$i]->Type == "null"))
-                            {
-                                $this->$name = "";
-                            }
-                            else if($this->map->PublicProperties[$i]->Type == "int")
-                            {
-                                $this->$name = 0;
-                            }
-                            else if(($this->map->PublicProperties[$i]->Type == "float") || ($this->map->PublicProperties[$i]->Type == "double"))
-                            {
-                                $this->$name = 0.00;
-                            }
-                            else if($this->map->PublicProperties[$i]->Type == "int")
-                            {
-                                $this->$name = 0;
-                            }
-                            else if($this->map->PublicProperties[$i]->Type == "bool")
-                            {
-                                $this->$name = false;
-                            }
-                        }
-                    }
-                }
-            }
-            for($i = 0; $i < count($this->map->HiddenProperties); $i++)
-            {
-                $name = $this->map->HiddenProperties[$i]->Name;
-
-                if(strtolower($name) != $this->idName)
-                {
-                    if(($this->map->HiddenProperties[$i]->IsArray) || ($this->map->HiddenProperties[$i]->Type == "array"))
-                    {
-                        $this->setProperty($name, []);
-                    }
-                    else
-                    {
-                        if(class_exists($this->map->HiddenProperties[$i]->Type))
-                        {
-                            $objRef = new ReflectionClass($this->map->HiddenProperties[$i]->Type);
-
-                            if($objRef->isSubclassOf(Transactable::class))
-                            {
-                                $this->setProperty($name, $objRef->newInstance($db));
-                            }
-                            else
-                            {
-                                $this->setProperty($name, $objRef->newInstance());
-                            }
-                        }
-                        else
-                        {
-                            if(($this->map->PublicProperties[$i]->Type == "string") || ($this->map->HiddenProperties[$i]->Type == "null"))
-                            {
-                                $this->setProperty($name, "");
-                            }
-                            else if($this->map->HiddenProperties[$i]->Type == "int")
-                            {
-                                $this->setProperty($name, 0);
-                            }
-                            else if(($this->map->HiddenProperties[$i]->Type == "float") || ($this->map->HiddenProperties[$i]->Type == "double"))
-                            {
-                                $this->setProperty($name, 0.00);
-                            }
-                            else if($this->map->HiddenProperties[$i]->Type == "int")
-                            {
-                                $this->setProperty($name, 0);
-                            }
-                            else if($this->map->HiddenProperties[$i]->Type == "bool")
-                            {
-                                $this->setProperty($name, false);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        public function Save()
+        /**
+         * Save the transactable to the database
+         * @return void
+         */
+        public function save(): void
         {
             //call the presave event handler
             $this->onPreSave();
 
-            $id = $this->Id;
-            $this->Modified = new WixDate(time());
+            $id = $this->id;
+            $this->modified = new Date(time());
 
-            if(DBQuery::With(DB::Connect($this->db, $this->tableName))->Where([$this->idName=>$id])->Limit(1)->Count() > 0)
+            if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
             {
                 //set the last modified date
-                $this->Modified = new WixDate(time());
+                $this->modified = new Date(time());
 
                 DBQuery::With(DB::Connect($this->db, $this->tableName))
-                    ->Where([$this->idName=>$id])
-                    ->Update($this->toDBObject());
+                    ->where([$this->idName=>$id])
+                    ->update($this->toDBObject());
 
                 //call on updated event handler
                 $this->onUpdated();
             }
             else
             {
-                $this->Created = $this->Modified;
+                $this->created = $this->modified;
 
-                if(($this->ForceAutoGenId) || ($this->Id == ""))
+                if(($this->forceAutoGenId) || ($this->id == ""))
                 {
-                    $id = Random::Generate(32);
-                    if(DBQuery::With(DB::Connect($this->db, $this->tableName))->Where([$this->idName=>$id])->Limit(1)->Count() > 0)
+                    $id = Random::Characters(32);
+                    if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
                     {
-                        $id = Random::Generate(32, Random::Alphanumeric);
+                        $id = Random::Characters(32);
                     }
-                    $this->Id = $id;
+                    $this->id = $id;
                 }
 
                 DBQuery::With(DB::Connect($this->db, $this->tableName))
-                    ->Insert($this->toDBObject());
+                    ->insert($this->toDBObject());
 
                 //call on inserted event handler
                 $this->onInserted();
@@ -251,373 +117,100 @@
             $this->onSaved();
         }
 
-        protected static function buildCollection($conn): DBCollection
+        /**
+         * Delete the transactable from the database
+         * @return void
+         */
+        public function delete(): void
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $db = $config->GetConnection();
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($db);
-            $map = $instance->GetMap();
-
-            $args = func_get_args();
-            $query = DBQuery::With(DB::Connect($config, $map->DBPrep()))
-            ->Where(["deleted"=>0]);
-            $pgn = null;
-
-            for($i = 0; $i < count($args); $i++)
-            {
-                if($args[$i] instanceof Timespan)
-                {
-                    $range = new Range(new Span($args[$i]->Start, $args[$i]->Stop));
-                    $query = $query->Where(['created'=>[new greaterThan($range->Start, true), new lessThan($range->Stop, true)]]);
-                }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
-                {
-                    $query = $query->Where($args[$i]);
-                }
-                else if($args[$i] instanceof Search)
-                {
-                    if(count($args[$i]->fields) == 0)
-                    {
-                        $args[$i]->fields = $instance->getFields();
-                    }
-                    $query = $query->Search($args[$i]);
-                }
-                else if ($args[$i] instanceof SearchBuilder)
-                {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
-                }
-                else if($args[$i] instanceof Order)
-                {
-                    $query = $query->Order($args[$i]);
-                }
-                else if($args[$i] instanceof Span)
-                {
-                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
-                    $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
-                }
-                else if($args[$i] instanceof distinctOn)
-                {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
-                    {
-                        $query = $query->Distinct($args[$i]->getValue()[$d]);
-                    }
-                }
-                else if($args[$i] instanceof groupBy)
-                {
-                    $query = $query->GroupBy($args[$i]);
-                }
-            }
-            $result = $instance->buildJoins($query)->Get();
-
-
-            //serialize and add to this object
-            $ret = new DBCollection();
-
-            for($i = 0; $i < count($result->Data); $i++)
-            {
-                $obj = $reflection->newInstance($db);
-                $obj->fromDBResult($result->Data[$i]);
-
-                $ret->List[] = $obj;
-            }
-            $ret->TotalRowCount = $result->Count;
-            $ret->Collectionspan->Start = $result->Start;
-            $ret->Collectionspan->Stop = $result->Stop;
-
-            if($pgn != null)
-            {
-                $ret->Meta = DBCollectionMeta::ByPagination($result->Count, $pgn);
-            }
-            return $ret;
-        }
-
-        protected static function fromDeleted($conn): DBCollection
-        {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $db = $config->GetConnection();
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($db);
-            $map = $instance->GetMap();
-
-            $pgn = null;
-            $args = func_get_args();
-            $query = DBQuery::With(DB::Connect($config, $map->DBPrep()))
-                ->Where(["deleted"=>new notEqual(0)]);
-
-
-            for($i = 0; $i < count($args); $i++)
-            {
-                if($args[$i] instanceof Timespan)
-                {
-                    $range = new Range(new Span($args[$i]->Start, $args[$i]->Stop));
-                    $query = $query->Where(['created'=>[new greaterThan($range->Start, true), new lessThan($range->Stop, true)]]);
-                }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
-                {
-                    $query = $query->Where($args[$i]);
-                }
-                else if($args[$i] instanceof Search)
-                {
-                    if(count($args[$i]->fields) == 0)
-                    {
-                        $args[$i]->fields = $instance->getFields();
-                    }
-                    $query = $query->Search($args[$i]);
-                }
-                else if ($args[$i] instanceof SearchBuilder)
-                {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
-                }
-                else if($args[$i] instanceof Order)
-                {
-                    $query = $query->Order($args[$i]);
-                }
-                else if($args[$i] instanceof Span)
-                {
-                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
-                    $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
-                }
-                else if($args[$i] instanceof distinctOn)
-                {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
-                    {
-                        $query = $query->Distinct($args[$i]->getValue()[$d]);
-                    }
-                }
-                else if($args[$i] instanceof groupBy)
-                {
-                    $query = $query->GroupBy($args[$i]);
-                }
-            }
-            $result = $instance->buildJoins($query)->Get();
-
-
-            //serialize and add to this object
-            $ret = new DBCollection();
-
-            for($i = 0; $i < count($result->Data); $i++)
-            {
-                $obj = $reflection->newInstance($db);
-                $obj->fromDBResult($result->Data[$i]);
-
-                $ret->List[] = $obj;
-                $ret->TotalRowCount = $result->Count;
-            }
-            return $ret;
-        }
-
-        protected static function countCollection($conn): int
-        {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($config->GetConnection());
-            $map = $instance->GetMap();
-
-            $args = func_get_args();
-            $query = DBQuery::With(DB::Connect($config, $map->DBPrep()))
-                ->Where(["deleted"=>0]);
-
-            for($i = 0; $i < count($args); $i++)
-            {
-                if($args[$i] instanceof Timespan)
-                {
-                    $range = new Range(new Span($args[$i]->Start, $args[$i]->Stop));
-                    $query = $query->Where(['created'=>[new greaterThan($range->Start, true), new lessThan($range->Stop, true)]]);
-                }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
-                {
-                    $query = $query->Where($args[$i]);
-                }
-                else if($args[$i] instanceof Search)
-                {
-                    if(count($args[$i]->fields) == 0)
-                    {
-                        $args[$i]->fields = $instance->getFields();
-                    }
-                    $query = $query->Search($args[$i]);
-                }
-                else if ($args[$i] instanceof SearchBuilder)
-                {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
-                }
-                else if($args[$i] instanceof Order)
-                {
-                    $query = $query->Order($args[$i]);
-                }
-                else if($args[$i] instanceof Span)
-                {
-                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
-                    $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
-                }
-                else if($args[$i] instanceof distinctOn)
-                {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
-                    {
-                        $query = $query->Distinct($args[$i]->getValue()[$d]);
-                    }
-                }
-                else if($args[$i] instanceof groupBy)
-                {
-                    $query = $query->GroupBy($args[$i]);
-                }
-            }
-            return $instance->buildJoins($query)->Count();
-        }
-
-        protected static function deletedCount($conn): int
-        {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($config->GetConnection())
-                ->Where(["deleted"=>new notEqual(0)]);
-            $map = $instance->GetMap();
-
-            $args = func_get_args();
-            $query = DBQuery::With(DB::Connect($config, $map->DBPrep()));
-
-            for($i = 0; $i < count($args); $i++)
-            {
-                if($args[$i] instanceof Timespan)
-                {
-                    $range = new Range(new Span($args[$i]->Start, $args[$i]->Stop));
-                    $query = $query->Where(['created'=>[new greaterThan($range->Start, true), new lessThan($range->Stop, true)]]);
-                }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
-                {
-                    $query = $query->Where($args[$i]);
-                }
-                else if($args[$i] instanceof Search)
-                {
-                    if(count($args[$i]->fields) == 0)
-                    {
-                        $args[$i]->fields = $instance->getFields();
-                    }
-                    $query = $query->Search($args[$i]);
-                }
-                else if ($args[$i] instanceof SearchBuilder)
-                {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
-                }
-                else if($args[$i] instanceof Order)
-                {
-                    $query = $query->Order($args[$i]);
-                }
-                else if($args[$i] instanceof Span)
-                {
-                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->Start, $args[$i]->Stop)))->toSpan());
-                    $query = $query->Limit($pgn->Limit)->Offset($pgn->Offset);
-                }
-                else if($args[$i] instanceof distinctOn)
-                {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
-                    {
-                        $query = $query->Distinct($args[$i]->getValue()[$d]);
-                    }
-                }
-                else if($args[$i] instanceof groupBy)
-                {
-                    $query = $query->GroupBy($args[$i]);
-                }
-            }
-            return $instance->buildJoins($query)->Count();
-        }
-
-        public function Delete()
-        {
-            if($this->UseSoftDelete)
+            if($this->useSoftDelete)
             {
                 //set the objects delete time
-                $this->Deleted = new WixDate(time());
+                $this->deleted = new Date(time());
 
                 //remove from general access
-                DBQuery::With(DB::Connect($this->db, $this->tableName))->Where([$this->idName=>$this->Id])->Update([
+                DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$this->id])->update([
                     "deleted"=>time()
                 ]);
             }
             else
             {
-                DBQuery::With(DB::Connect($this->db, $this->tableName))->Where([$this->idName=>$this->Id])->Delete();
+                DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$this->id])->delete();
             }
 
             //call post delete method
             $this->onDeleted();
         }
 
-        protected static function purgeDeleted($conn)
-        {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($config->GetConnection());
-            $map = $instance->GetMap();
-
-            return DBQuery::With(DB::Connect($config, $map))->Where(["deleted"=>new greaterThan(0)])->Delete();
-        }
-
+        /**
+         * Get DB image of the transactable
+         * @return DBTable
+         */
         public function getDBImage(): DBTable
         {
-            $map = $this->GetMap();
+            $map = $this->getMap();
 
             $image = new DBTable();
-            $image->Name = strtolower(array_reverse(explode("\\", $map->Name))[0]);
+            $image->name = strtolower(array_reverse(explode("\\", $map->name))[0]);
 
 
             //add id to the lexer
             $idProp = new DBTableField();
-            $idProp->Name = "id";
-            $idProp->Type = DBFieldType::Int;
-            $idProp->IsPrimary = true;
-            $idProp->AutoIncrement = true;
+            $idProp->name = "id";
+            $idProp->type = DBFieldType::INT;
+            $idProp->isPrimary = true;
+            $idProp->isUnique = true;
+            $idProp->autoIncrement = true;
             $image->AddField($idProp);
 
 
             $midProp = new DBTableField();
-            $midProp->Name = strtolower(array_reverse(explode("\\", $map->Name))[0])."id";
-            $midProp->Type = DBFieldType::Varchar;
-            $midProp->IsUnique = true;
-            $midProp->Length = 64;
+            $midProp->name = strtolower(array_reverse(explode("\\", $map->name))[0])."id";
+            $midProp->type = DBFieldType::VARCHAR;
+            $midProp->isUnique = true;
+            $midProp->length = 64;
             $image->AddField($midProp);
 
 
             $createdProp = new DBTableField();
-            $createdProp->Name = "created";
-            $createdProp->Type = DBFieldType::Int;
+            $createdProp->name = "created";
+            $createdProp->type = DBFieldType::INT;
             $image->AddField($createdProp);
 
 
             $modifiedProp = new DBTableField();
-            $modifiedProp->Name = "modified";
-            $modifiedProp->Type = DBFieldType::Int;
+            $modifiedProp->name = "modified";
+            $modifiedProp->type = DBFieldType::INT;
             $image->AddField($modifiedProp);
 
 
             $modifiedProp = new DBTableField();
-            $modifiedProp->Name = "deleted";
-            $modifiedProp->Type = DBFieldType::Int;
+            $modifiedProp->name = "deleted";
+            $modifiedProp->type = DBFieldType::INT;
             $image->AddField($modifiedProp);
 
 
             //add regular fields
-            for($i = 0; $i < count($map->PublicProperties); $i++)
+            for($i = 0; $i < count($map->publicProperties); $i++)
             {
-                $prop = $map->PublicProperties[$i];
+                $prop = $map->publicProperties[$i];
 
-                if(!$this->isExcluded($prop->Name) && (strtolower($prop->Name) != "id") &&
-                    (strtolower($prop->Name) != strtolower($map->Name)."id") &&
-                    (strtolower($prop->Name) != "created") && (strtolower($prop->Name) != "modified") &&
-                    (strtolower($prop->Name) != "deleted"))
+                if(!$this->isExcluded($prop->name) && (strtolower($prop->name) != "id") &&
+                    (strtolower($prop->name) != strtolower($map->name)."id") &&
+                    (strtolower($prop->name) != "created") && (strtolower($prop->name) != "modified") &&
+                    (strtolower($prop->name) != "deleted"))
                 {
                     $fieldProp = new DBTableField();
-                    $fieldProp->Name = strtolower($prop->baseName);
+                    $fieldProp->name = strtolower($prop->baseName);
 
-                    if($prop->IsArray)
+                    if($prop->isArray)
                     {
-                        $fieldProp->Type = DBFieldType::LongText;
-                        $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                        $fieldProp->type = DBFieldType::LONG_TEXT;
+                        $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                     }
-                    else if(enum_exists($prop->Type))
+                    else if(enum_exists($prop->type))
                     {
-                        $ref = new ReflectionEnum($prop->Type);
+                        $ref = new ReflectionEnum($prop->type);
 
                         if($ref->isBacked())
                         {
@@ -627,95 +220,95 @@
                             {
                                 if(strtolower($backedType->getName()) == "int")
                                 {
-                                    $fieldProp->Type = DBFieldType::Int;
-                                    $fieldProp->Length = 11;
-                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                    $fieldProp->type = DBFieldType::INT;
+                                    $fieldProp->length = 11;
+                                    $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                                 }
                                 else if(strtolower($backedType->getName()) == "float")
                                 {
-                                    $fieldProp->Type = DBFieldType::Double;
-                                    $fieldProp->Length = 11;
-                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                    $fieldProp->type = DBFieldType::DOUBLE;
+                                    $fieldProp->length = 11;
+                                    $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                                 }
                                 else if(strtolower($backedType->getName()) == "string")
                                 {
-                                    $fieldProp->Type = DBFieldType::Varchar;
-                                    $fieldProp->Length = 200;
-                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                    $fieldProp->type = DBFieldType::VARCHAR;
+                                    $fieldProp->length = 200;
+                                    $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                                 }
                                 else if(strtolower($backedType->getName()) == "bool")
                                 {
-                                    $fieldProp->Type = DBFieldType::Int;
-                                    $fieldProp->Length = 11;
-                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                    $fieldProp->type = DBFieldType::INT;
+                                    $fieldProp->length = 11;
+                                    $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                                 }
                                 else
                                 {
-                                    $fieldProp->Type = DBFieldType::Text;
-                                    $fieldProp->Length = 100;
-                                    $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                                    $fieldProp->type = DBFieldType::TEXT;
+                                    $fieldProp->length = 100;
+                                    $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                                 }
                             }
                         }
                         else
                         {
-                            $fieldProp->Type = DBFieldType::Text;
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::TEXT;
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
-                    else if(class_exists($prop->Type))
+                    else if(class_exists($prop->type))
                     {
-                        $ref = new ReflectionClass($prop->Type);
+                        $ref = new ReflectionClass($prop->type);
 
                         if($ref->implementsInterface(ISerializable::class))
                         {
-                            $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->GetConnection()) : $ref->newInstance();
+                            $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->getConnection()) : $ref->newInstance();
 
-                            $fieldProp->Type = $obj->_DBType();
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = $obj->_DBType();
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else if($ref->isSubclassOf(Transactable::class))
                         {
-                            $fieldProp->Type = DBFieldType::Varchar;
-                            $fieldProp->Length = 64;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::VARCHAR;
+                            $fieldProp->length = 64;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else
                         {
-                            $fieldProp->Type = DBFieldType::Text;
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::TEXT;
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
                     else
                     {
-                        if($prop->Type == "string")
+                        if($prop->type == "string")
                         {
-                            $fieldProp->Type = ((in_array($prop->Name, $this->LongText) || in_array(strtolower($prop->Name), $this->LongText)) ? DBFieldType::LongText : DBFieldType::Varchar);
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = ((in_array($prop->name, $this->longText) || in_array(strtolower($prop->name), $this->longText)) ? DBFieldType::LONG_TEXT : DBFieldType::VARCHAR);
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if($prop->Type == "int")
+                        else if($prop->type == "int")
                         {
-                            $fieldProp->Type = DBFieldType::Int;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::INT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if($prop->Type == "bool")
+                        else if($prop->type == "bool")
                         {
-                            $fieldProp->Type = DBFieldType::Int;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::INT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if(($prop->Type == "float") || ($prop->Type == "double"))
+                        else if(($prop->type == "float") || ($prop->type == "double"))
                         {
-                            $fieldProp->Type = DBFieldType::Double;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::DOUBLE;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else
                         {
-                            $fieldProp->Type = DBFieldType::Text;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::TEXT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
                     $image->AddField($fieldProp);
@@ -723,75 +316,75 @@
             }
 
             //add hidden fields
-            for($i = 0; $i < count($map->HiddenProperties); $i++)
+            for($i = 0; $i < count($map->hiddenProperties); $i++)
             {
-                $prop = $map->HiddenProperties[$i];
+                $prop = $map->hiddenProperties[$i];
 
-                if(!$this->isExcluded($prop->Name) && (strtolower($prop->Name) != "id") &&
-                    (strtolower($prop->Name) != strtolower($map->Name)."id") &&
-                    (strtolower($prop->Name) != "created") && (strtolower($prop->Name) != "modified") &&
-                    (strtolower($prop->Name) != "deleted"))
+                if(!$this->isExcluded($prop->name) && (strtolower($prop->name) != "id") &&
+                    (strtolower($prop->name) != strtolower($map->name)."id") &&
+                    (strtolower($prop->name) != "created") && (strtolower($prop->name) != "modified") &&
+                    (strtolower($prop->name) != "deleted"))
                 {
                     $fieldProp = new DBTableField();
-                    $fieldProp->Name = strtolower($prop->baseName);
+                    $fieldProp->name = strtolower($prop->baseName);
 
-                    if($prop->IsArray)
+                    if($prop->isArray)
                     {
-                        $fieldProp->Type = DBFieldType::LongText;
-                        $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                        $fieldProp->type = DBFieldType::LONG_TEXT;
+                        $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                     }
-                    else if(class_exists($prop->Type))
+                    else if(class_exists($prop->type))
                     {
-                        $ref = new ReflectionClass($prop->Type);
+                        $ref = new ReflectionClass($prop->type);
 
                         if($ref->implementsInterface(ISerializable::class))
                         {
-                            $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->GetConnection()) : $ref->newInstance();
+                            $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->getConnection()) : $ref->newInstance();
 
-                            $fieldProp->Type = $obj->_DBType();
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = $obj->_DBType();
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else if($ref->isSubclassOf(Transactable::class))
                         {
-                            $fieldProp->Type = DBFieldType::Varchar;
-                            $fieldProp->Length = 64;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::VARCHAR;
+                            $fieldProp->length = 64;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else
                         {
-                            $fieldProp->Type = DBFieldType::Text;
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::TEXT;
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
                     else
                     {
-                        if($prop->Type == "string")
+                        if($prop->type == "string")
                         {
-                            $fieldProp->Type = ((in_array($prop->Name, $this->LongText) || in_array(strtolower($prop->Name), $this->LongText)) ? DBFieldType::LongText : DBFieldType::Varchar);
-                            $fieldProp->Length = 100;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = ((in_array($prop->name, $this->longText) || in_array(strtolower($prop->name), $this->longText)) ? DBFieldType::LONG_TEXT : DBFieldType::VARCHAR);
+                            $fieldProp->length = 100;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if($prop->Type == "int")
+                        else if($prop->type == "int")
                         {
-                            $fieldProp->Type = DBFieldType::Int;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::INT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if($prop->Type == "bool")
+                        else if($prop->type == "bool")
                         {
-                            $fieldProp->Type = DBFieldType::Int;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::INT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
-                        else if(($prop->Type == "float") || ($prop->Type == "double"))
+                        else if(($prop->type == "float") || ($prop->type == "double"))
                         {
-                            $fieldProp->Type = DBFieldType::Double;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::DOUBLE;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                         else
                         {
-                            $fieldProp->Type = DBFieldType::Text;
-                            $fieldProp->IsUnique = ((in_array($prop->Name, $this->Unique)) || (in_array(strtolower($prop->Name), $this->Unique)));
+                            $fieldProp->type = DBFieldType::TEXT;
+                            $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
                     $image->AddField($fieldProp);
@@ -799,138 +392,97 @@
             }
 
             //add included fields (includes)
-            for($i = 0; $i < count($this->Includes); $i++)
+            for($i = 0; $i < count($this->includes); $i++)
             {
                 $fieldProp = new DBTableField();
-                $fieldProp->Name = $this->mappedName(strtolower($this->Includes[$i]));
+                $fieldProp->name = $this->mappedName(strtolower($this->includes[$i]));
 
-                if($this->mappedType($this->Includes[$i], 'null') == "array")
+                if($this->mappedType($this->includes[$i], 'null') == "array")
                 {
-                    $fieldProp->Type = DBFieldType::Text;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::TEXT;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
 
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "string")
+                else if($this->mappedType($this->includes[$i], 'null') == "string")
                 {
-                    $fieldProp->Type = ((in_array($this->Includes[$i], $this->LongText) || in_array(strtolower($this->Includes[$i]), $this->LongText)) ? DBFieldType::LongText : DBFieldType::Varchar);;
-                    $fieldProp->Length = 100;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = ((in_array($this->includes[$i], $this->longText) || in_array(strtolower($this->includes[$i]), $this->longText)) ? DBFieldType::LONG_TEXT : DBFieldType::VARCHAR);;
+                    $fieldProp->length = 100;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "int")
+                else if($this->mappedType($this->includes[$i], 'null') == "int")
                 {
-                    $fieldProp->Type = DBFieldType::Int;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::INT;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "bool")
+                else if($this->mappedType($this->includes[$i], 'null') == "bool")
                 {
-                    $fieldProp->Type = DBFieldType::Int;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::INT;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "float")
+                else if($this->mappedType($this->includes[$i], 'null') == "float")
                 {
-                    $fieldProp->Type = DBFieldType::Double;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::DOUBLE;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "double")
+                else if($this->mappedType($this->includes[$i], 'null') == "double")
                 {
-                    $fieldProp->Type = DBFieldType::Double;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::DOUBLE;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if($this->mappedType($this->Includes[$i], 'null') == "null")
+                else if($this->mappedType($this->includes[$i], 'null') == "null")
                 {
-                    $fieldProp->Type = DBFieldType::Varchar;
-                    $fieldProp->Length = 100;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::VARCHAR;
+                    $fieldProp->length = 100;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if(array_reverse(explode("\\", $this->mappedType($this->Includes[$i], 'null')))[0] == "WixDate")
+                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "Date")
                 {
-                    $fieldProp->Type = DBFieldType::Int;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::INT;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
                 else
                 {
-                    $fieldProp->Type = DBFieldType::Text;
-                    $fieldProp->IsUnique = ((in_array($this->Includes[$i], $this->Unique)) || (in_array(strtolower($this->Includes[$i]), $this->Unique)));
+                    $fieldProp->type = DBFieldType::TEXT;
+                    $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
                 $image->AddField($fieldProp);
             }
             return $image;
         }
 
-        protected function UsesSoftDelete(): bool
-        {
-            return $this->UseSoftDelete;
-        }
-
-        protected static function ListDelete($conn)
-        {
-            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
-
-            $reflection = new ReflectionClass(get_called_class());
-            $instance = $reflection->newInstance($db->GetConnection());
-            $map = $instance->GetMap()->DBPrep();
-
-            $ids = func_get_args();
-            $tableName = strtolower(array_reverse(explode("\\", $map->Name))[0]);
-
-            $data = [];
-
-            for($i = 0; $i < count($ids); $i++)
-            {
-                if(is_string($ids[$i]))
-                {
-                    $data[] = $ids[$i];
-                }
-            }
-
-            if($instance->UsesSoftDelete())
-            {
-                $tm = time();
-
-                return DBQuery::With(DB::Connect($db, $map))->Where(new Filter([$tableName."id"=>$data], Filter::OR))->Update([
-                    "deleted"=>$tm
-                ]);
-            }
-            else
-            {
-                return DBQuery::With(DB::Connect($db, $map))->Where(new Filter([$tableName."id"=>$data], Filter::OR))->Delete();
-            }
-        }
-
-        protected function isUnique($property): bool
-        {
-            return false;
-        }
-
+        /**
+         * Convert transactable data to a format that can be easily saved to the db
+         * @return array
+         */
         public function toDBObject(): array
         {
             $ret = [];
 
-            $ret[$this->idName] = $this->Id;
+            $ret[$this->idName] = $this->id;
 
-            for($i = 0; $i < count($this->map->PublicProperties); $i++)
+            for($i = 0; $i < count($this->map->publicProperties); $i++)
             {
-                $prop = $this->map->PublicProperties[$i];
-                $name = $prop->Name;
+                $prop = $this->map->publicProperties[$i];
+                $name = $prop->name;
 
                 if((strtolower($name) != $this->tableName."id") && (strtolower($name) != "id"))
                 {
                     $val = $this->$name;
 
-                    if(isset($this->Serialization[$name]) || isset($this->Serialization[strtolower($name)]))
+                    if(isset($this->serialization[$name]) || isset($this->serialization[strtolower($name)]))
                     {
-                        $method = $this->Serialization[$name];
+                        $method = $this->serialization[$name];
                         $v = $this->$method($val);
 
                         if(is_object($v) || is_array($v))
                         {
                             if((new ReflectionClass($v))->implementsInterface(ISerializable::class))
                             {
-                                $ret[strtolower($prop->baseName)] = $v->_Serialize();
+                                $ret[strtolower($prop->baseName)] = $v->_serialize();
                             }
                             else if($val instanceof Transactable)
                             {
-                                $ret[strtolower($prop->baseName)] = $v->Id;
+                                $ret[strtolower($prop->baseName)] = $v->id;
                             }
                             else
                             {
@@ -944,7 +496,7 @@
                     }
                     else
                     {
-                        if((($prop->IsArray) || ($prop->Type == "array")) && (is_array($val)))
+                        if((($prop->isArray) || ($prop->type == "array")) && (is_array($val)))
                         {
                             $arrData = [];
 
@@ -956,11 +508,11 @@
 
                                     if($ref->implementsInterface(ISerializable::class))
                                     {
-                                        $arrData[] = $val[$j]->_Serialize();
+                                        $arrData[] = $val[$j]->_serialize();
                                     }
                                     else if($ref->isSubclassOf(Transactable::class))
                                     {
-                                        $arrData[] = ($val[$j]->Id != "") ? $val[$j]->Id : (($val[$j]->GetLazyLoadId() != "") ? $val[$j]->GetLazyLoadId() : "");
+                                        $arrData[] = ($val[$j]->id != "") ? $val[$j]->id : (($val[$j]->getLazyLoadId() != "") ? $val[$j]->getLazyLoadId() : "");
                                     }
                                     else
                                     {
@@ -976,9 +528,9 @@
                         }
                         else
                         {
-                            if(enum_exists($prop->Type))
+                            if(enum_exists($prop->type))
                             {
-                                $ref = new ReflectionEnum($prop->Type);
+                                $ref = new ReflectionEnum($prop->type);
 
                                 if($ref->isBacked())
                                 {
@@ -1047,11 +599,11 @@
                             {
                                 if((new ReflectionClass($val))->implementsInterface(ISerializable::class))
                                 {
-                                    $ret[strtolower($prop->baseName)] = $val->_Serialize();
+                                    $ret[strtolower($prop->baseName)] = $val->_serialize();
                                 }
                                 else if($val instanceof Transactable)
                                 {
-                                    $ret[strtolower($prop->baseName)] = $val->Id;
+                                    $ret[strtolower($prop->baseName)] = $val->id;
                                 }
                                 else
                                 {
@@ -1085,36 +637,36 @@
                     }
                 }
             }
-            for($i = 0; $i < count($this->map->HiddenProperties); $i++)
+            for($i = 0; $i < count($this->map->hiddenProperties); $i++)
             {
-                $prop = $this->map->HiddenProperties[$i];
-                $name = $prop->Name;
+                $prop = $this->map->hiddenProperties[$i];
+                $name = $prop->name;
 
                 if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
                 {
                     if(strtolower($name) != "id")
                     {
-                        $ret[strtolower($name)] = $this->Id;
+                        $ret[strtolower($name)] = $this->id;
                     }
                 }
                 else
                 {
-                    $val = $this->HiddenProperties[$name];
+                    $val = $this->hiddenProperties[$name];
 
-                    if(isset($this->Serialization[$name]) || isset($this->Serialization[strtolower($name)]))
+                    if(isset($this->serialization[$name]) || isset($this->serialization[strtolower($name)]))
                     {
-                        $method = $this->Serialization[$name];
+                        $method = $this->serialization[$name];
                         $v = $this->$method($val);
 
                         if(is_object($v) || is_array($v))
                         {
                             if((new ReflectionClass($v))->implementsInterface(ISerializable::class))
                             {
-                                $ret[strtolower($prop->baseName)] = $v->_Serialize();
+                                $ret[strtolower($prop->baseName)] = $v->_serialize();
                             }
                             else if($val instanceof Transactable)
                             {
-                                $ret[strtolower($prop->baseName)] = ($v->Id != "") ? $v->Id : (($v->GetLazyLoadId() != "") ? $v->GetLazyLoadId() : "");
+                                $ret[strtolower($prop->baseName)] = ($v->id != "") ? $v->id : (($v->getLazyLoadId() != "") ? $v->getLazyLoadId() : "");
                             }
                             else
                             {
@@ -1128,7 +680,7 @@
                     }
                     else
                     {
-                        if((($prop->IsArray) || ($prop->Type == "array")) && (is_array($val)))
+                        if((($prop->isArray) || ($prop->type == "array")) && (is_array($val)))
                         {
                             $arrData = [];
 
@@ -1140,11 +692,11 @@
 
                                     if($ref->implementsInterface(ISerializable::class))
                                     {
-                                        $arrData[] = $val[$j]->_Serialize();
+                                        $arrData[] = $val[$j]->_serialize();
                                     }
                                     else if($ref->isSubclassOf(Transactable::class))
                                     {
-                                        $arrData[] = $val[$j]->Id;
+                                        $arrData[] = $val[$j]->id;
                                     }
                                     else
                                     {
@@ -1164,11 +716,11 @@
                             {
                                 if((new ReflectionClass($val))->implementsInterface(ISerializable::class))
                                 {
-                                    $ret[strtolower($prop->baseName)] = $val->_Serialize();
+                                    $ret[strtolower($prop->baseName)] = $val->_serialize();
                                 }
                                 else if($val instanceof Transactable)
                                 {
-                                    $ret[strtolower($prop->baseName)] = $val->Id;
+                                    $ret[strtolower($prop->baseName)] = $val->id;
                                 }
                                 else
                                 {
@@ -1179,23 +731,23 @@
                             {
                                 if(is_string($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = $this->HiddenProperties[$name];
+                                    $ret[strtolower($prop->baseName)] = $this->hiddenProperties[$name];
                                 }
                                 else if(is_int($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = intval($this->HiddenProperties[$name]);
+                                    $ret[strtolower($prop->baseName)] = intval($this->hiddenProperties[$name]);
                                 }
                                 else if(is_bool($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = Convert::ToInt($this->HiddenProperties[$name]);
+                                    $ret[strtolower($prop->baseName)] = Convert::ToInt($this->hiddenProperties[$name]);
                                 }
                                 else if((is_float($val)) || (is_double($val)))
                                 {
-                                    $ret[strtolower($prop->baseName)] = doubleval($this->HiddenProperties[$name]);
+                                    $ret[strtolower($prop->baseName)] = doubleval($this->hiddenProperties[$name]);
                                 }
                                 else
                                 {
-                                    $ret[strtolower($prop->baseName)] = $this->HiddenProperties[$name];
+                                    $ret[strtolower($prop->baseName)] = $this->hiddenProperties[$name];
                                 }
                             }
                         }
@@ -1205,32 +757,38 @@
             return $ret;
         }
 
-        public function fromDBResult($data, int $level=0)
+        /**
+         * Hydrate the object from data returned from the database
+         * @param mixed $data
+         * @param int $level
+         * @return void
+         */
+        public function fromDBResult($data, int $level=0): void
         {
             $ref = new ReflectionClass($this);
 
-            $this->Id = $data[$this->idName] ?? ($data['id'] ?? "");
+            $this->id = $data[$this->idName] ?? ($data['id'] ?? "");
 
-            for($i = 0; $i < count($this->map->PublicProperties); $i++)
+            for($i = 0; $i < count($this->map->publicProperties); $i++)
             {
-                $prop = $this->map->PublicProperties[$i];
+                $prop = $this->map->publicProperties[$i];
 
-                if((strtolower($prop->Name) != $this->idName) && isset($data[strtolower($prop->baseName)]) && (strtolower($prop->Name) != "id"))
+                if((strtolower($prop->name) != $this->idName) && isset($data[strtolower($prop->baseName)]) && (strtolower($prop->name) != "id"))
                 {
-                    if(isset($this->Deserialization[$prop->Name]) || isset($this->Deserialization[strtolower($prop->Name)]))
+                    if(isset($this->deserialization[$prop->name]) || isset($this->deserialization[strtolower($prop->name)]))
                     {
-                        $method = $this->Deserialization[$prop->Name] ?? $this->Deserialization[strtolower($prop->Name)];
+                        $method = $this->deserialization[$prop->name] ?? $this->deserialization[strtolower($prop->name)];
                         $this->$method($data[$prop->baseName]);
                     }
                     else
                     {
-                        if(($prop->IsArray) || ($prop->Type == "array"))
+                        if(($prop->isArray) || ($prop->type == "array"))
                         {
                             $arr = json_decode($data[$prop->baseName]);
 
-                            if(class_exists($prop->Type))
+                            if(class_exists($prop->type))
                             {
-                                $arr_ref = new ReflectionClass($prop->Type);
+                                $arr_ref = new ReflectionClass($prop->type);
 
                                 if($arr_ref->implementsInterface(ISerializable::class))
                                 {
@@ -1238,11 +796,11 @@
 
                                     for($x = 0; $x < count($arr); $x++)
                                     {
-                                        $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->GetConnection()) : $arr_ref->newInstance();
+                                        $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->getConnection()) : $arr_ref->newInstance();
                                         $a->_Deserialize($arr[$x]);
                                         $obj[] = $a;
                                     }
-                                    $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                    $ref->getProperty($prop->name)->setValue($this, $obj);
                                 }
                                 else if($arr_ref->isSubclassOf(Transactable::class))
                                 {
@@ -1250,11 +808,11 @@
 
                                     for($x = 0; $x < count($arr); $x++)
                                     {
-                                        $a = $arr_ref->newInstance($this->db->GetConnection());
-                                        $a->LazyLoadId = $arr[$x];
+                                        $a = $arr_ref->newInstance($this->db->getConnection());
+                                        $a->lazyLoadId = $arr[$x];
                                         $obj[] = $a;
                                     }
-                                    $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                    $ref->getProperty($prop->name)->setValue($this, $obj);
                                 }
                                 else
                                 {
@@ -1265,26 +823,26 @@
                                         $a = $arr_ref->newInstance();
                                         $obj[] = ((new ObjectMapper(json_decode($arr[$x])))->mapTo($a, $this->db));
                                     }
-                                    $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                    $ref->getProperty($prop->name)->setValue($this, $obj);
                                 }
                             }
                             else
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, $arr);
+                                $ref->getProperty($prop->name)->setValue($this, $arr);
                             }
                         }
                         else
                         {
-                            if(class_exists($prop->Type))
+                            if(class_exists($prop->type))
                             {
-                                $objRef = new ReflectionClass($prop->Type);
+                                $objRef = new ReflectionClass($prop->type);
                                 $obj = null;
 
                                 if($objRef->isSubclassOf(Transactable::class))
                                 {
-                                    $obj = $objRef->newInstance($this->db->GetConnection());
+                                    $obj = $objRef->newInstance($this->db->getConnection());
                                 }
-                                else if(!enum_exists($prop->Type))
+                                else if(!enum_exists($prop->type))
                                 {
                                     $obj = $objRef->newInstance();
                                 }
@@ -1297,16 +855,16 @@
                                 {
                                     if($level > 0)
                                     {
-                                        $obj->LazyLoadId = $data[strtolower($prop->baseName)];
+                                        $obj->lazyLoadId = $data[strtolower($prop->baseName)];
                                     }
                                     else
                                     {
                                         $obj->fromDBResult($this->buildSubProperties($data, $prop->baseName), 1);
                                     }
                                 }
-                                else if(enum_exists($prop->Type))
+                                else if(enum_exists($prop->type))
                                 {
-                                    $enumRef = new ReflectionEnum($prop->Type);
+                                    $enumRef = new ReflectionEnum($prop->type);
                                     $cases = $enumRef->getCases();
 
                                     for($en = 0; $en < count($cases); $en++)
@@ -1325,62 +883,62 @@
                                     $obj = $mapper->mapTo($obj, $this->db);
                                 }
 
-                                if(enum_exists($prop->Type))
+                                if(enum_exists($prop->type))
                                 {
                                     if($obj != null)
                                     {
-                                        $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                        $ref->getProperty($prop->name)->setValue($this, $obj);
                                     }
                                 }
                                 else
                                 {
-                                    $ref->getProperty($prop->Name)->setValue($this, $obj);
+                                    $ref->getProperty($prop->name)->setValue($this, $obj);
                                 }
                             }
-                            else if($prop->Type == "int")
+                            else if($prop->type == "int")
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, intval($data[strtolower($prop->baseName)]));
+                                $ref->getProperty($prop->name)->setValue($this, intval($data[strtolower($prop->baseName)]));
                             }
-                            else if(($prop->Type == "double") || ($prop->Type == "float"))
+                            else if(($prop->type == "double") || ($prop->type == "float"))
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, doubleval($data[strtolower($prop->baseName)]));
+                                $ref->getProperty($prop->name)->setValue($this, doubleval($data[strtolower($prop->baseName)]));
                             }
-                            else if($prop->Type == "string")
+                            else if($prop->type == "string")
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, strval($data[strtolower($prop->baseName)]));
+                                $ref->getProperty($prop->name)->setValue($this, strval($data[strtolower($prop->baseName)]));
                             }
-                            else if($prop->Type == "bool")
+                            else if($prop->type == "bool")
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, boolval($data[strtolower($prop->baseName)]));
+                                $ref->getProperty($prop->name)->setValue($this, boolval($data[strtolower($prop->baseName)]));
                             }
                             else
                             {
-                                $ref->getProperty($prop->Name)->setValue($this, $data[strtolower($prop->baseName)]);
+                                $ref->getProperty($prop->name)->setValue($this, $data[strtolower($prop->baseName)]);
                             }
                         }
                     }
                 }
             }
-            for($i = 0; $i < count($this->map->HiddenProperties); $i++)
+            for($i = 0; $i < count($this->map->hiddenProperties); $i++)
             {
-                $prop = $this->map->HiddenProperties[$i];
+                $prop = $this->map->hiddenProperties[$i];
 
-                if((strtolower($prop->Name) != $this->idName) && isset($data[strtolower($prop->baseName)]) && (strtolower($prop->Name) != "id"))
+                if((strtolower($prop->name) != $this->idName) && isset($data[strtolower($prop->baseName)]) && (strtolower($prop->name) != "id"))
                 {
-                    if(isset($this->Deserialization[$prop->Name]) || isset($this->Deserialization[strtolower($prop->Name)]))
+                    if(isset($this->deserialization[$prop->name]) || isset($this->deserialization[strtolower($prop->name)]))
                     {
-                        $method = $this->Deserialization[$prop->Name] ?? $this->Deserialization[strtolower($prop->Name)];
+                        $method = $this->deserialization[$prop->name] ?? $this->deserialization[strtolower($prop->name)];
                         $this->$method($data[$prop->baseName]);
                     }
                     else
                     {
-                        if(($prop->IsArray) || ($prop->Type == "array"))
+                        if(($prop->isArray) || ($prop->type == "array"))
                         {
                             $arr = json_decode($data[$prop->baseName]);
 
-                            if(class_exists($prop->Type))
+                            if(class_exists($prop->type))
                             {
-                                $arr_ref = new ReflectionClass($prop->Type);
+                                $arr_ref = new ReflectionClass($prop->type);
 
                                 if($ref->implementsInterface(ISerializable::class))
                                 {
@@ -1388,11 +946,11 @@
 
                                     for($x = 0; $x < count($arr); $x++)
                                     {
-                                        $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->GetConnection()) : $arr_ref->newInstance();
+                                        $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->getConnection()) : $arr_ref->newInstance();
                                         $a->_Deserialize($arr[$x]);
                                         $obj[] = $a;
                                     }
-                                    $this->setProperty($prop->Name, $obj);
+                                    $this->setProperty($prop->name, $obj);
                                 }
                                 else if($ref->isSubclassOf(Transactable::class))
                                 {
@@ -1400,11 +958,11 @@
 
                                     for($x = 0; $x < count($arr); $x++)
                                     {
-                                        $a = $arr_ref->newInstance($this->db->GetConnection());
-                                        $a->LazyLoadId = $arr[$x];
+                                        $a = $arr_ref->newInstance($this->db->getConnection());
+                                        $a->lazyLoadId = $arr[$x];
                                         $obj[] = $a;
                                     }
-                                    $this->setProperty($prop->Name, $obj);
+                                    $this->setProperty($prop->name, $obj);
                                 }
                                 else
                                 {
@@ -1415,27 +973,27 @@
                                         $a = $arr_ref->newInstance();
                                         $obj[] = ((new ObjectMapper(json_decode($arr[$x])))->mapTo($a, $this->db));
                                     }
-                                    $this->setProperty($prop->Name, $obj);
+                                    $this->setProperty($prop->name, $obj);
                                 }
                             }
                             else
                             {
-                                $this->setProperty($prop->Name, $arr);
+                                $this->setProperty($prop->name, $arr);
                             }
                         }
                         else
                         {
-                            if(class_exists($prop->Type))
+                            if(class_exists($prop->type))
                             {
-                                $objRef = new ReflectionClass($prop->Type);
+                                $objRef = new ReflectionClass($prop->type);
 
                                 if($objRef->isSubclassOf(Transactable::class))
                                 {
-                                    $obj = $objRef->newInstance($this->db->GetConnection());
+                                    $obj = $objRef->newInstance($this->db->getConnection());
 
-                                    if(isset($this->Deserialization[$prop->Name]) || isset($this->Deserialization[strtolower($prop->Name)]))
+                                    if(isset($this->deserialization[$prop->name]) || isset($this->deserialization[strtolower($prop->name)]))
                                     {
-                                        $method = $this->Deserialization[$prop->Name] ?? $this->Deserialization[strtolower($prop->Name)];
+                                        $method = $this->deserialization[$prop->name] ?? $this->deserialization[strtolower($prop->name)];
                                         $method($data[strtolower($prop->baseName)]);
                                     }
                                     else if($objRef->implementsInterface(ISerializable::class))
@@ -1446,27 +1004,27 @@
                                     {
                                         if($level > 0)
                                         {
-                                            $obj->LazyLoadId = $data[strtolower($prop->baseName)];
+                                            $obj->lazyLoadId = $data[strtolower($prop->baseName)];
                                         }
                                         else
                                         {
                                             $obj->fromDBResult($this->buildSubProperties($data, $prop->baseName), 1);
                                         }
                                     }
-                                    $this->setProperty($prop->Name, $obj);
+                                    $this->setProperty($prop->name, $obj);
                                 }
                                 else
                                 {
                                     $obj = $objRef->newInstance();
 
-                                    if(isset($this->Deserialization[$prop->Name]) || isset($this->Deserialization[strtolower($prop->Name)]))
+                                    if(isset($this->deserialization[$prop->name]) || isset($this->deserialization[strtolower($prop->name)]))
                                     {
-                                        $method = $this->Deserialization[$prop->Name] ?? $this->Deserialization[strtolower($prop->Name)];
+                                        $method = $this->deserialization[$prop->name] ?? $this->deserialization[strtolower($prop->name)];
                                         $method($data[strtolower($prop->baseName)]);
                                     }
-                                    else if(isset($this->Deserialization[strtolower($prop->Name)]))
+                                    else if(isset($this->deserialization[strtolower($prop->name)]))
                                     {
-                                        $method = $this->Deserialization[strtolower($prop->Name)];
+                                        $method = $this->deserialization[strtolower($prop->name)];
                                         $method($data[strtolower($prop->baseName)]);
                                     }
                                     else if($objRef->implementsInterface(ISerializable::class))
@@ -1480,28 +1038,28 @@
                                         $mapper = new ObjectMapper($json);
                                         $obj = $mapper->mapTo($obj, $this->db);
                                     }
-                                    $this->setProperty($prop->Name, $obj);
+                                    $this->setProperty($prop->name, $obj);
                                 }
                             }
-                            else if($prop->Type == "int")
+                            else if($prop->type == "int")
                             {
-                                $this->setProperty($prop->Name, Convert::ToInt($data[strtolower($prop->baseName)]));
+                                $this->setProperty($prop->name, Convert::ToInt($data[strtolower($prop->baseName)]));
                             }
-                            else if(($prop->Type == "double") || ($prop->Type == "float"))
+                            else if(($prop->type == "double") || ($prop->type == "float"))
                             {
-                                $this->setProperty($prop->Name, doubleval($data[strtolower($prop->baseName)]));
+                                $this->setProperty($prop->name, doubleval($data[strtolower($prop->baseName)]));
                             }
-                            else if($prop->Type == "string")
+                            else if($prop->type == "string")
                             {
-                                $this->setProperty($prop->Name, strval($data[strtolower($prop->baseName)]));
+                                $this->setProperty($prop->name, strval($data[strtolower($prop->baseName)]));
                             }
-                            else if($prop->Type == "bool")
+                            else if($prop->type == "bool")
                             {
-                                $this->setProperty($prop->Name, Convert::ToBool($data[strtolower($prop->baseName)]));
+                                $this->setProperty($prop->name, Convert::ToBool($data[strtolower($prop->baseName)]));
                             }
                             else
                             {
-                                $this->setProperty($prop->Name, $data[strtolower($prop->baseName)]);
+                                $this->setProperty($prop->name, $data[strtolower($prop->baseName)]);
                             }
                         }
                     }
@@ -1509,37 +1067,777 @@
             }
         }
 
-        protected function buildJoins(DBQuery $query): DBQuery
+        /**
+         * Summary of getFields
+         * @return string[]
+         */
+        public function getFields(): array
         {
-            for($i = 0; $i < count($this->map->PublicProperties); $i++)
-            {
-                if((!$this->map->PublicProperties[$i]->IsArray) &&
-                    (class_exists($this->map->PublicProperties[$i]->Type)) &&
-                    ((new ReflectionClass($this->map->PublicProperties[$i]->Type))->isSubclassOf(Transactable::class)))
-                {
-                    $instance = (new ReflectionClass($this->map->PublicProperties[$i]->Type))->newInstance($this->db->GetConnection());
-                    $instanceMap = $instance->GetMap();
-                    $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->Name))[0]);
+            $ret = [];
 
-                    $query = $query->Join($instanceMap->DBPrep(), strtolower($this->map->PublicProperties[$i]->baseName), $instanceName."id", DBJoin::Left);
+            for($i = 0; $i < count($this->map->publicProperties); $i++)
+            {
+                $name = $this->map->publicProperties[$i]->baseName;
+
+                if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
+                {
+                    if(strtolower($name) != "id")
+                    {
+                        $ret[] = strtolower($name);
+                    }
+                }
+                else
+                {
+                    $ret[] = strtolower($name);
                 }
             }
-            for($i = 0; $i < count($this->map->HiddenProperties); $i++)
+            /*
+            for($i = 0; $i < count($this->map->hiddenProperties); $i++)
             {
-                if((!$this->map->HiddenProperties[$i]->IsArray) &&
-                    (class_exists($this->map->HiddenProperties[$i]->Type)) &&
-                    ((new ReflectionClass($this->map->HiddenProperties[$i]->Type))->isSubclassOf(Transactable::class)))
-                {
-                    $instance = (new ReflectionClass($this->map->HiddenProperties[$i]->Type))->newInstance($this->db->GetConnection());
-                    $instanceMap = $instance->GetMap();
-                    $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->Name))[0]);
+                $name = $this->map->hiddenProperties[$i]->baseName;
 
-                    $query = $query->Join($instanceMap->DBPrep(), strtolower($this->map->HiddenProperties[$i]->baseName), $instanceName."id", DBJoin::Left);
+                if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
+                {
+                    if(strtolower($name) != "id")
+                    {
+                        $ret[] = strtolower($name);
+                    }
+                }
+                else
+                {
+                    $ret[] = strtolower($name);
+                }
+            }
+            */
+            return $ret;
+        }
+
+
+        /**
+         * Initialize the transactable object from lazy loaded id
+         * @return void
+         */
+        public function __init(): void
+        {
+            if($this->lazyLoadId != "")
+            {
+                $this->initializeObject($this->lazyLoadId);
+                $this->lazyLoadId = "";
+            }
+        }
+
+        /**
+         * Get the lazy loaded id
+         * @return string|null
+         */
+        public function getLazyLoadId(): ?string
+        {
+            if($this->lazyLoadId != "")
+            {
+                return $this->lazyLoadId;
+            }
+            return  null;
+        }
+
+        /**
+         * Initialize the arrays in the tranactable object
+         * @return void
+         */
+        public function initObjectArrays(): void
+        {
+            if(!$this->hasInitiaizedArrays)
+            {
+                //establish connection once to be used for all instances
+                $db = $this->db->getConnection();
+
+                for($i = 0; $i < count($this->map->publicProperties); $i++)
+                {
+                    if(($this->map->publicProperties[$i]->isArray) && class_exists($this->map->publicProperties[$i]->type) && ((new ReflectionClass($this->map->publicProperties[$i]->type)))->isSubclassOf(Transactable::class))
+                    {
+                        $ref = new ReflectionClass($this->map->publicProperties[$i]->type);
+                        $instance = $ref->newInstance($db);
+
+                        $name = $this->map->publicProperties[$i]->name;
+                        $vals = $this->$name;
+
+                        if(is_array($vals) && (count($vals) > 0))
+                        {
+                            $ids = [];
+                            $query = $instance->buildJoins(DBQuery::With(DB::Connect($this->db, $instance->getMap()->dbPrep()))
+                                ->where(['deleted'=>0]));
+
+                            for($j = 0; $j < count($vals); $j++)
+                            {
+                                if($vals[$j] instanceof Transactable)
+                                {
+                                    $id = $vals[$j]->getLazyLoadId();
+
+                                    if(($id != null) && (trim($id) != ""))
+                                    {
+                                        $ids[] = $id;
+                                    }
+                                }
+                            }
+                            
+
+                            if(count($ids) > 0) 
+                            {
+                                $query = $query->where(new Filter([strtolower(array_reverse(explode("\\", $instance->getMap()->name))[0])."id"=>$ids], FilterOperation::OR));
+                            }
+                            $result = $query->get();
+
+                            $ret = [];
+
+                            for($k = 0; $k < count($result->data); $k++)
+                            {
+                                $obj = $ref->newInstance($db);
+                                $obj->fromDBResult($result->data[$k]);
+                                $ret[] = $obj;
+                            }
+                            $this->$name = $ret;
+                        }
+                    }
+                }
+                $this->hasInitiaizedArrays = true;
+            }
+        }
+
+
+        #region protected methods
+
+        /**
+         * Check if the transactable object uses soft deletion
+         * @return bool
+         */
+        protected function usesSoftDelete(): bool
+        {
+            return $this->useSoftDelete;
+        }
+
+        /**
+         * Checks if the value is in the unique array, meaning it's a unique value
+         * @param mixed $property
+         * @return bool
+         */
+        protected function isUnique($property): bool
+        {
+            return false;
+        }
+
+        /**
+         * Build all the table joins for the transactable object
+         * @param \Wixnit\Data\DBQuery $query
+         * @return DBQuery
+         */
+        protected function buildJoins(DBQuery $query): DBQuery
+        {
+            for($i = 0; $i < count($this->map->publicProperties); $i++)
+            {
+                if((!$this->map->publicProperties[$i]->isArray) &&
+                    (class_exists($this->map->publicProperties[$i]->type)) &&
+                    ((new ReflectionClass($this->map->publicProperties[$i]->type))->isSubclassOf(Transactable::class)))
+                {
+                    $instance = (new ReflectionClass($this->map->publicProperties[$i]->type))->newInstance($this->db->getConnection());
+                    $instanceMap = $instance->getMap();
+                    $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
+
+                    $query = $query->Join($instanceMap->dbPrep(), strtolower($this->map->publicProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
+                }
+            }
+            for($i = 0; $i < count($this->map->hiddenProperties); $i++)
+            {
+                if((!$this->map->hiddenProperties[$i]->isArray) &&
+                    (class_exists($this->map->hiddenProperties[$i]->type)) &&
+                    ((new ReflectionClass($this->map->hiddenProperties[$i]->type))->isSubclassOf(Transactable::class)))
+                {
+                    $instance = (new ReflectionClass($this->map->hiddenProperties[$i]->type))->newInstance($this->db->getConnection());
+                    $instanceMap = $instance->getMap();
+                    $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
+
+                    $query = $query->Join($instanceMap->dbPrep(), strtolower($this->map->hiddenProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
                 }
             }
             return $query;
         }
+        #endregion
 
+
+        #region static methods
+
+        /**
+         * Remove all the entries that have been deleted using soft delete
+         * @param mixed $conn
+         * @return DBResult
+         */
+        protected static function PurgeDeleted($conn): DBResult
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            return DBQuery::With(DB::Connect($config, $map))->where(["deleted"=>new greaterThan(0)])->delete();
+        }
+
+        /**
+         * Build a DBCollection using Filters, Searches etc
+         * @param mixed $conn
+         * @param array $
+         * @return DBCollection
+         */
+        protected static function BuildCollection($conn): DBCollection
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $db = $config->getConnection();
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($db);
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))
+            ->where(["deleted"=>0]);
+            $pgn = null;
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof Timespan)
+                {
+                    $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
+                    $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
+                }
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                {
+                    $query = $query->where($args[$i]);
+                }
+                else if($args[$i] instanceof Search)
+                {
+                    if(count($args[$i]->fields) == 0)
+                    {
+                        $args[$i]->fields = $instance->getFields();
+                    }
+                    $query = $query->Search($args[$i]);
+                }
+                else if ($args[$i] instanceof SearchBuilder)
+                {
+                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                }
+                else if($args[$i] instanceof Order)
+                {
+                    $query = $query->Order($args[$i]);
+                }
+                else if($args[$i] instanceof Span)
+                {
+                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->start, $args[$i]->stop)))->toSpan());
+                    $query = $query->limit($pgn->limit)->offset($pgn->offset);
+                }
+                else if($args[$i] instanceof DistinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->fields); $d++)
+                    {
+                        $query = $query->distinct($args[$i]->fields[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->groupBy($args[$i]);
+                }
+            }
+            $result = $instance->buildJoins($query)->get();
+
+
+            //serialize and add to this object
+            $ret = new DBCollection();
+
+            for($i = 0; $i < count($result->data); $i++)
+            {
+                $obj = $reflection->newInstance($db);
+                $obj->fromDBResult($result->data[$i]);
+
+                $ret->list[] = $obj;
+            }
+            $ret->totalRowCount = $result->count;
+            $ret->collectionSpan->start = $result->start;
+            $ret->collectionSpan->stop = $result->stop;
+
+            if($pgn != null)
+            {
+                $ret->meta = DBCollectionMeta::FromPagination($result->count, $pgn);
+            }
+            return $ret;
+        }
+
+        /**
+         * Get Items that's been soft deleted
+         * @param mixed $conn
+         * @param array $
+         * @return DBCollection
+         */
+        protected static function FromDeleted($conn): DBCollection
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $db = $config->getConnection();
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($db);
+            $map = $instance->getMap();
+
+            $pgn = null;
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))
+                ->where(["deleted"=>new notEqual(0)]);
+
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof Timespan)
+                {
+                    $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
+                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                }
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                {
+                    $query = $query->where($args[$i]);
+                }
+                else if($args[$i] instanceof Search)
+                {
+                    if(count($args[$i]->fields) == 0)
+                    {
+                        $args[$i]->fields = $instance->getFields();
+                    }
+                    $query = $query->Search($args[$i]);
+                }
+                else if ($args[$i] instanceof SearchBuilder)
+                {
+                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                }
+                else if($args[$i] instanceof Order)
+                {
+                    $query = $query->Order($args[$i]);
+                }
+                else if($args[$i] instanceof Span)
+                {
+                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->start, $args[$i]->stop)))->toSpan());
+                    $query = $query->limit($pgn->limit)->offset($pgn->offset);
+                }
+                else if($args[$i] instanceof DistinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->groupBy($args[$i]);
+                }
+            }
+            $result = $instance->buildJoins($query)->get();
+
+
+            //serialize and add to this object
+            $ret = new DBCollection();
+
+            for($i = 0; $i < count($result->data); $i++)
+            {
+                $obj = $reflection->newInstance($db);
+                $obj->fromDBResult($result->data[$i]);
+
+                $ret->list[] = $obj;
+                $ret->totalRowCount = $result->count;
+            }
+            return $ret;
+        }
+
+        /**
+         * Get the number of rows retrieved by processing Filters, Searches etc.
+         * @param mixed $conn
+         * @param array $
+         * @return int
+         */
+        protected static function CountCollection($conn): int
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))
+                ->where(["deleted"=>0]);
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof Timespan)
+                {
+                    $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
+                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                }
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                {
+                    $query = $query->where($args[$i]);
+                }
+                else if($args[$i] instanceof Search)
+                {
+                    if(count($args[$i]->fields) == 0)
+                    {
+                        $args[$i]->fields = $instance->getFields();
+                    }
+                    $query = $query->Search($args[$i]);
+                }
+                else if ($args[$i] instanceof SearchBuilder)
+                {
+                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                }
+                else if($args[$i] instanceof Order)
+                {
+                    $query = $query->Order($args[$i]);
+                }
+                else if($args[$i] instanceof Span)
+                {
+                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->start, $args[$i]->stop)))->toSpan());
+                    $query = $query->limit($pgn->limit)->offset($pgn->offset);
+                }
+                else if($args[$i] instanceof DistinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->groupBy($args[$i]);
+                }
+            }
+            return $instance->buildJoins($query)->count();
+        }
+
+        /**
+         * Get the number of rows that's been deleted
+         * @param mixed $conn
+         * @param array $
+         * @return int
+         */
+        protected static function DeletedCount($conn): int
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection())
+                ->where(["deleted"=>new notEqual(0)]);
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()));
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof Timespan)
+                {
+                    $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
+                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                }
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                {
+                    $query = $query->where($args[$i]);
+                }
+                else if($args[$i] instanceof Search)
+                {
+                    if(count($args[$i]->fields) == 0)
+                    {
+                        $args[$i]->fields = $instance->getFields();
+                    }
+                    $query = $query->Search($args[$i]);
+                }
+                else if ($args[$i] instanceof SearchBuilder)
+                {
+                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                }
+                else if($args[$i] instanceof Order)
+                {
+                    $query = $query->Order($args[$i]);
+                }
+                else if($args[$i] instanceof Span)
+                {
+                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->start, $args[$i]->stop)))->toSpan());
+                    $query = $query->limit($pgn->limit)->offset($pgn->offset);
+                }
+                else if($args[$i] instanceof DistinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    {
+                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->groupBy($args[$i]);
+                }
+            }
+            return $instance->buildJoins($query)->count();
+        }
+
+        /**
+         * Delete a list of items by their object or id
+         * @param mixed $conn
+         * @param array $
+         * @return DBResult
+         */
+        protected static function QuickDelete($conn): DBResult
+        {
+            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($db->getConnection());
+            $map = $instance->getMap()->dbPrep();
+
+            $ids = func_get_args();
+            $tableName = strtolower(array_reverse(explode("\\", $map->name))[0]);
+
+            $data = [];
+
+            for($i = 0; $i < count($ids); $i++)
+            {
+                if(is_string($ids[$i]))
+                {
+                    $data[] = $ids[$i];
+                }
+                else if(is_array($ids[$i]))
+                {
+                    for($j = 0; $j < count($ids[$i]); $j++)
+                    {
+                        if(is_string($ids[$i][$j]))
+                        {
+                            $data[] = $ids[$i][$j];
+                        }
+                        else if($ids[$i][$j] instanceof Transactable)
+                        {
+                            $data[] = $ids[$i][$j]->id;
+                        }
+                    }
+                }
+                if($ids[$i] instanceof Transactable)
+                {
+                    $data[] = $ids[$i]->id;
+                }
+            }
+
+            if($instance->UsesSoftDelete())
+            {
+                $tm = time();
+
+                return DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=>$data], FilterOperation::OR))->update([
+                    "deleted"=>$tm
+                ]);
+            }
+            else
+            {
+                return DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=>$data], FilterOperation::OR))->delete();
+            }
+        }
+
+
+        ///TODO: methods to implement
+
+        /**
+         * Save an array of the type
+         * @param array $objects
+         * @return void
+         */
+        public static function QuickSave($conn): void
+        {
+            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($db->getConnection());
+            $map = $instance->getMap()->dbPrep();
+
+            $objs = func_get_args();
+            $tableName = strtolower(array_reverse(explode("\\", $map->name))[0]);
+
+            $data = [];
+
+            for($i = 0; $i < count($objs); $i++)
+            {
+                if(is_array($objs[$i]))
+                {
+                    for($j = 0; $j < count($objs[$i]); $j++)
+                    {
+                        if($reflection->isInstance($objs[$i][$j]))
+                        {
+                            $data[] = $objs[$i][$j]->id;
+                        }
+                    }
+                }
+                else if($reflection->isInstance($objs[$i]))
+                {
+                    $data[] = $objs[$i]->id;
+                }
+            }
+
+            ///TODO: process and save the data
+
+            
+        }
+        #endregion
+
+
+        #region private methods
+
+        /**
+         * Initialize the transactable object with default values
+         * @param mixed $arg
+         * @return void
+         */
+        private function initializeObject($arg)
+        {
+            if($arg != null)
+            {
+                $query = $this->buildJoins(
+                    DBQuery::With(DB::Connect($this->db, $this->map->dbPrep()))
+                        ->where(new Filter([$this->idName=>$arg, 'deleted'=>0]))
+                        ->limit(1))
+                    ->get();
+
+                if($query->count > 0)
+                {
+                    //apply to object
+                    $this->fromDBResult($query->data[0]);
+
+                    //fire event when object is initialized
+                    $this->onInitialized();
+                }
+                else
+                {
+                    $this->initializeFields();
+                }
+            }
+            else
+            {
+                $this->initializeFields();
+            }
+        }
+
+        /**
+         * Initialize the transactable object with data from the db
+         * @return void
+         */
+        private  function initializeFields()
+        {
+            $db = $this->db->getConnection();
+
+            for($i = 0; $i < count($this->map->publicProperties); $i++)
+            {
+                $name = $this->map->publicProperties[$i]->name;
+
+                if((!isset($this->$name)) && (strtolower($name) != $this->idName))
+                {
+                    if(($this->map->publicProperties[$i]->isArray) || ($this->map->publicProperties[$i]->type == "array"))
+                    {
+                        $this->$name = [];
+                    }
+                    else
+                    {
+                        if(enum_exists($this->map->publicProperties[$i]->type))
+                        {
+                            //cannot assign anything to an enumeration
+                        }
+                        else if(class_exists($this->map->publicProperties[$i]->type))
+                        {
+                            $objRef = new ReflectionClass($this->map->publicProperties[$i]->type);
+
+                            if($objRef->isSubclassOf(Transactable::class))
+                            {
+                                $this->$name = $objRef->newInstance($db);
+                            }
+                            else
+                            {
+                                $this->$name = ObjectMapper::InitializeObject($objRef->newInstance());
+                            }
+                        }
+                        else
+                        {
+                            if(($this->map->publicProperties[$i]->type == "string") || ($this->map->publicProperties[$i]->type == "null"))
+                            {
+                                $this->$name = "";
+                            }
+                            else if($this->map->publicProperties[$i]->type == "int")
+                            {
+                                $this->$name = 0;
+                            }
+                            else if(($this->map->publicProperties[$i]->type == "float") || ($this->map->publicProperties[$i]->type == "double"))
+                            {
+                                $this->$name = 0.00;
+                            }
+                            else if($this->map->publicProperties[$i]->type == "int")
+                            {
+                                $this->$name = 0;
+                            }
+                            else if($this->map->publicProperties[$i]->type == "bool")
+                            {
+                                $this->$name = false;
+                            }
+                        }
+                    }
+                }
+            }
+            for($i = 0; $i < count($this->map->hiddenProperties); $i++)
+            {
+                $name = $this->map->hiddenProperties[$i]->name;
+
+                if(strtolower($name) != $this->idName)
+                {
+                    if(($this->map->hiddenProperties[$i]->isArray) || ($this->map->hiddenProperties[$i]->type == "array"))
+                    {
+                        $this->setProperty($name, []);
+                    }
+                    else
+                    {
+                        if(class_exists($this->map->hiddenProperties[$i]->type))
+                        {
+                            $objRef = new ReflectionClass($this->map->hiddenProperties[$i]->type);
+
+                            if($objRef->isSubclassOf(Transactable::class))
+                            {
+                                $this->setProperty($name, $objRef->newInstance($db));
+                            }
+                            else
+                            {
+                                $this->setProperty($name, $objRef->newInstance());
+                            }
+                        }
+                        else
+                        {
+                            if(($this->map->publicProperties[$i]->type == "string") || ($this->map->hiddenProperties[$i]->type == "null"))
+                            {
+                                $this->setProperty($name, "");
+                            }
+                            else if($this->map->hiddenProperties[$i]->type == "int")
+                            {
+                                $this->setProperty($name, 0);
+                            }
+                            else if(($this->map->hiddenProperties[$i]->type == "float") || ($this->map->hiddenProperties[$i]->type == "double"))
+                            {
+                                $this->setProperty($name, 0.00);
+                            }
+                            else if($this->map->hiddenProperties[$i]->type == "int")
+                            {
+                                $this->setProperty($name, 0);
+                            }
+                            else if($this->map->hiddenProperties[$i]->type == "bool")
+                            {
+                                $this->setProperty($name, false);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Build second level properties that have been added through table joins
+         * @param mixed $data
+         * @param string $property_name
+         * @return array
+         */
         private function buildSubProperties($data, string $property_name): array
         {
             $ret = [];
@@ -1565,6 +1863,11 @@
             return $ret;
         }
 
+        /**
+         * Process search builder & prep it for processing
+         * @param \Wixnit\Data\SearchBuilder $builder
+         * @return SearchBuilder
+         */
         private function addFieldsToSearchBuilder(SearchBuilder $builder): SearchBuilder
         {
             for($i = 0; $i< count($builder->searches); $i++)
@@ -1583,137 +1886,52 @@
             }
             return $builder;
         }
+        #endregion
 
-        public function getFields(): array
-        {
-            $ret = [];
 
-            for($i = 0; $i < count($this->map->PublicProperties); $i++)
-            {
-                $name = $this->map->PublicProperties[$i]->baseName;
+        #region event methods
+        ///event methods {methods that will be called when events occur}
 
-                if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
-                {
-                    if(strtolower($name) != "id")
-                    {
-                        $ret[] = strtolower($name);
-                    }
-                }
-                else
-                {
-                    $ret[] = strtolower($name);
-                }
-            }
-            /*
-            for($i = 0; $i < count($this->map->HiddenProperties); $i++)
-            {
-                $name = $this->map->HiddenProperties[$i]->baseName;
-
-                if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
-                {
-                    if(strtolower($name) != "id")
-                    {
-                        $ret[] = strtolower($name);
-                    }
-                }
-                else
-                {
-                    $ret[] = strtolower($name);
-                }
-            }
-            */
-            return $ret;
-        }
-
-        public function __Init()
-        {
-            if($this->LazyLoadId != "")
-            {
-                $this->InitializeObject($this->LazyLoadId);
-                $this->LazyLoadId = "";
-            }
-        }
-
-        public function GetLazyLoadId(): ?string
-        {
-            if($this->LazyLoadId != "")
-            {
-                return $this->LazyLoadId;
-            }
-            return  null;
-        }
-
-        public function InitObjectArrays()
-        {
-            if(!$this->hasInitiaizedArrays)
-            {
-                //establish connection once to be used for all instances
-                $db = $this->db->GetConnection();
-
-                for($i = 0; $i < count($this->map->PublicProperties); $i++)
-                {
-                    if(($this->map->PublicProperties[$i]->IsArray) && class_exists($this->map->PublicProperties[$i]->Type) && ((new ReflectionClass($this->map->PublicProperties[$i]->Type)))->isSubclassOf(Transactable::class))
-                    {
-                        $ref = new ReflectionClass($this->map->PublicProperties[$i]->Type);
-                        $instance = $ref->newInstance($db);
-
-                        $name = $this->map->PublicProperties[$i]->Name;
-                        $vals = $this->$name;
-
-                        if(is_array($vals) && (count($vals) > 0))
-                        {
-                            $ids = [];
-                            $query = $instance->buildJoins(DBQuery::With(DB::Connect($this->db, $instance->GetMap()->DBPrep()))
-                                ->Where(['deleted'=>0]));
-
-                            for($j = 0; $j < count($vals); $j++)
-                            {
-                                if($vals[$j] instanceof Transactable)
-                                {
-                                    $id = $vals[$j]->GetLazyLoadId();
-
-                                    if(($id != null) && (trim($id) != ""))
-                                    {
-                                        $ids[] = $id;
-                                    }
-                                }
-                            }
-                            
-
-                            if(count($ids) > 0) 
-                            {
-                                $query = $query->Where(new Filter([strtolower(array_reverse(explode("\\", $instance->GetMap()->Name))[0])."id"=>$ids], Filter::OR));
-                            }
-                            $result = $query->Get();
-
-                            $ret = [];
-
-                            for($k = 0; $k < count($result->Data); $k++)
-                            {
-                                $obj = $ref->newInstance($db);
-                                $obj->fromDBResult($result->Data[$k]);
-                                $ret[] = $obj;
-                            }
-                            $this->$name = $ret;
-                        }
-                    }
-                }
-                $this->hasInitiaizedArrays = true;
-            }
-        }
-
-        ///event methods {methods that will be called as
+        /**
+         * onCreated is called when the object is created and have not been initiallized
+         * @return void
+         */
         protected function onCreated(){}
 
+        /**
+         * onInitialized is called after the object is created and initialized
+         * @return void
+         */
         protected function onInitialized(){}
 
+        /**
+         * onSaved will be called after the object is updated or saved to the db for the first time
+         * @return void
+         */
         protected function onSaved(){}
 
+        /**
+         * onDelete is called after the object have been deleted from the db
+         * @return void
+         */
         protected function onDeleted(){}
 
+        /**
+         * onUpdated is called after the object is updated
+         * @return void
+         */
         protected function onUpdated(){}
 
+        /**
+         * onInserted is called after the object have been saved for the first time 
+         * @return void
+         */
         protected function onInserted(){}
 
+        /**
+         * onPreSave is called before the object is saved
+         * @return void
+         */
         protected function onPreSave(){}
+        #endregion
     }

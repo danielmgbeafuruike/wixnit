@@ -4,14 +4,14 @@
 
     use Wixnit\Utilities\Convert;
 
-    class lessThan
+    class LessThan
     {
-        public $Value = 0;
+        public $value = 0;
         public bool $orEqualTo = false;
 
         function __construct($value=0, $orEqualTo=false)
         {
-            $this->Value = is_numeric($value) ? doubleval($value) : $value;
+            $this->value = is_numeric($value) ? doubleval($value) : $value;
             $this->orEqualTo = Convert::ToBool($orEqualTo);
         }
     }

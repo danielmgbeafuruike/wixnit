@@ -7,12 +7,12 @@
 
     abstract class Savable extends BaseModel
     {
-        private bool $Initialization = true;
-        protected bool $ForceAutoGenId = false;
+        private bool $initialization = true;
+        protected bool $forceAutoGenId = false;
 
-        function __construct(bool $Initialize=true)
+        function __construct(bool $initialize=true)
         {
-            $this->Initialization = $Initialize;
+            $this->initialization = $initialize;
             $db = null;
 
             $args = func_get_args();
@@ -25,7 +25,7 @@
                 }
             }
 
-            if($this->Initialization)
+            if($this->initialization)
             {
                 parent::__construct(($db != null ? $db : new DBConfig()), 'single_safe_record');
             }
@@ -40,10 +40,10 @@
         {
             parent::onCreated();
 
-            if(($this->Id == "") && ($this->Initialization))
+            if(($this->id == "") && ($this->initialization))
             {
-                $this->Id = "single_safe_record";
-                $this->Save();
+                $this->id = "single_safe_record";
+                $this->save();
             }
         }
     }

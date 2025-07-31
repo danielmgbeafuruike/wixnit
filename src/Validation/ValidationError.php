@@ -4,7 +4,7 @@
 
     class ValidationError
     {
-        public string $Error = "";
-        public string $Value = "";
-        public string $PropertyName = "";
+        public string $error = "";
+        public string $value = "";
+        public string $propertyName = "";
     }

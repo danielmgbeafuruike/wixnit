@@ -3,6 +3,7 @@
     namespace Wixnit\App;
 
     use Exception;
+    use Wixnit\Routing\Request;
 
     class View
     {
@@ -16,7 +17,7 @@
         /**
          * @throws Exception
          */
-        public function Render()
+        public function render(Request $req): void
         {
             $full = ($this->filePath.(file_exists($this->filePath) ? "" : (file_exists($this->filePath.".php") ? ".php" : ".phtml")));
 

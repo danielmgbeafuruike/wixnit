@@ -2,68 +2,40 @@
 
     namespace Wixnit\Data;
 
-    use Wixnit\Utilities\Convert;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
-    use stdClass;
 
     class Pagination extends Span
     {
-        public $Offset = null;
-        public $Limit = null;
+        public $offset = null;
+        public $limit = null;
 
         function __construct($page = 1, $perpage = 25)
         {
             $start = (($page - 1) * $perpage);
             $stop = (($start + $perpage) - 1);
 
-            $this->Limit = $perpage;
-            $this->Offset = $start;
+            $this->limit = $perpage;
+            $this->offset = $start;
 
             parent::__construct($start, $stop);
         }
 
+        /**
+         * Create a Pagination object from a Span object
+         * @param \Wixnit\Utilities\Span $span
+         * @return Pagination
+         */
         public static function FromSpan(Span $span): Pagination
         {
             $range = new Range($span);
 
             $pgn = new Pagination();
-            $pgn->Start = $range->Start;
-            $pgn->Stop = $range->Stop;
-            $pgn->Limit = (($pgn->Stop - $pgn->Start) + 1);
-            $pgn->Offset = $pgn->Start;
+            $pgn->start = $range->start;
+            $pgn->stop = $range->stop;
+            $pgn->limit = (($pgn->stop - $pgn->start) + 1);
+            $pgn->offset = $pgn->start;
 
             return $pgn;
-        }
-
-        public function Serialize()
-        {
-            $ret = new stdClass();
-            $ret->Type = "Pagination";
-            $ret->Start = $this->Start;
-            $ret->Stop = $this->Stop;
-            $ret->Offset = $this->Offset;
-            $ret->Limit = $this->Limit;
-
-            return json_encode($ret);
-        }
-
-        public static function Deserialize($serialized_span) : Pagination
-        {
-            $ret = new Pagination();
-
-            if(is_string($serialized_span))
-            {
-                $r = json_decode($serialized_span);
-
-                if($r->Type == "Pagination")
-                {
-                    $ret->Limit = isset($r->Limit) ? Convert::ToInt($r->Limit) : 0;
-                    $ret->Offset = isset($r->Offset) ? Convert::ToInt($r->Offset) : 0;
-                    $ret->Start = isset($r->Start) ? Convert::ToInt($r->Start) : 0;
-                    $ret->Stop = isset($r->Stop) ? Convert::ToInt($r->Stop) : 0;
-                }
-            }
-            return $ret;
         }
     }

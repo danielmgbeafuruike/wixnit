@@ -6,72 +6,91 @@
 
     class DBCollection implements \Countable, \ArrayAccess
     {
-        public array $List = [];
-        public int $TotalRowCount = 0;
-        public Span $Collectionspan;
+        public array $list = [];
+        public int $totalRowCount = 0;
+        public Span $collectionSpan;
 
         //meta data to lessen work for paginator
-        public DBCollectionMeta $Meta;
+        public DBCollectionMeta $meta;
 
 
         function __construct()
         {
-            $this->Collectionspan = new Span();
-            $this->Meta = new DBCollectionMeta();
+            $this->collectionSpan = new Span();
+            $this->meta = new DBCollectionMeta();
         }
 
         
-        public function Count() : int
+        /**
+         * Get the total lenght of the collection list
+         * @return int
+         */
+        public function count() : int
         {
-            return Count($this->List);
+            return Count($this->list);
         }
 
-        public function Get() : DBCollection
+        /**
+         * Reverse the order of the collection
+         * @return DBCollection
+         */
+        public function reverse() : DBCollection
         {
-            $ret = new DBCollection();
-
-            return $ret;
-        }
-
-        public function Order() : DBCollection
-        {
+            $this->list = array_reverse($this->list);
             return $this;
         }
 
-        public function Reverse() : DBCollection
-        {
-            $this->List = array_reverse($this->List);
-            return $this;
-        }
 
+        #region ArrayAccess methods
+        
+        /**
+         * Check if an offset exists
+         * @param mixed $offset
+         * @return bool
+         */
         public function offsetExists($offset): bool
         {
-            return isset($this->List[$offset]);
+            return isset($this->list[$offset]);
         }
 
+        /**
+         * Get the value at the specified offset
+         * @param mixed $offset
+         * @return mixed
+         */
         public function offsetGet(mixed $offset): mixed
         {
-            if(!isset($this->List[$offset]))
+            if(!isset($this->list[$offset]))
             {
                 return null;
             }
-            return  $this->List[$offset];
+            return  $this->list[$offset];
         }
 
+        /**
+         * Set the value at the specified offset
+         * @param mixed $offset
+         * @param mixed $value
+         */
         public function offsetSet(mixed $offset, mixed $value): void
         {
             if(is_null($offset))
             {
-                $this->List[] = $value;
+                $this->list[] = $value;
             }
             else
             {
-                $this->List[$offset] = $value;
+                $this->list[$offset] = $value;
             }
         }
 
+        /**
+         * Unset the value at the specified offset
+         * @param mixed $offset
+         */
         public function offsetUnset(mixed $offset): void
         {
-            unset($this->List[$offset]);
+            unset($this->list[$offset]);
         }
+        #endregion
     }

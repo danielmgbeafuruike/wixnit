@@ -2,19 +2,30 @@
 
     namespace Wixnit\Utilities;
 
-    use Wixnit\Interfaces\IBase;
+    use Wixnit\Enum\DBFieldType;
+    use Wixnit\Interfaces\ISerializable;
 
-    class Duration implements IBase
+    class Duration implements ISerializable
     {
-        public $Minutes = 0;
-        public $Hours = 0;
-        public $Days = 0;
-        public $Years = 0;
-        public $Months = 0;
-        public $Weeks = 0;
-        public int $Seconds = 0;
+        public int $minutes = 0;
+        public int $hours = 0;
+        public int $days = 0;
+        public int $years = 0;
+        public int $months = 0;
+        public int $weeks = 0;
+        public int $seconds = 0;
 
         function __construct($duration_in_seconds =null)
+        {
+            $this->init($duration_in_seconds);
+        }
+
+        /**
+         * hydrate the duration object
+         * @param mixed $arg
+         * @return void
+         */
+        private function init($duration_in_seconds =null)
         {
             if($duration_in_seconds != null)
             {
@@ -22,105 +33,75 @@
 
                 //calculate years in supplies seconds
                 $year = (((60 * 60) * 24) * (365 + (((60 * 60) * 24) / 4)));
-                $this->Years = $value / $year;
+                $this->years = $value / $year;
 
                 $remainder = $value % $year;
 
                 //calculate months in the seconds
                 $month =  (((60 * 60) * 24) * 30);
-                $this->Months = $remainder / $month;
+                $this->months = $remainder / $month;
 
                 $remainder = $remainder % $month;
 
                 //calculate weeks in the seconds
                 $week =  (((60 * 60) * 24) * 7);
-                $this->Weeks = $remainder / $week;
+                $this->weeks = $remainder / $week;
 
                 $remainder = $remainder % $week;
 
                 //calculate days in the seconds
                 $day =  ((60 * 60) * 24);
-                $this->Days = $remainder / $day;
+                $this->days = $remainder / $day;
 
                 $remainder = $remainder % $day;
 
                 //calculate hours in the seconds
                 $hour =  (60 * 60);
-                $this->Hours = $remainder / $hour;
+                $this->hours = $remainder / $hour;
 
                 $remainder = $remainder % $hour;
 
                 //calculate minutes in the seconds
                 $minutes =  60;
-                $this->Minutes = $remainder / $minutes;
+                $this->minutes = $remainder / $minutes;
 
                 $remainder = $remainder % $minutes;
                 
                 //the seconds left
-                $this->Seconds = $remainder;
+                $this->seconds = $remainder;
             }
         }
 
-
-        public function ToString()
+        public function toSeconds()
         {
-            // TODO: Implement ToString() method.
-        }
-
-
-        public function ToInt()
-        {
-            $ret = $this->Seconds +
-                (60 * $this->Minutes) +
-                ((60 * 60) * $this->Hours) +
-                (((60 * 60) * 24) * $this->Days) +
-                ((((60 * 60) * 24) * 7) * $this->Weeks) +
-                ((((60 * 60) * 24) * 30) * $this->Months) +
-                ((((60 * 60) * 24) * 365.25) * $this->Years);
+            $ret = $this->seconds +
+                (60 * $this->minutes) +
+                ((60 * 60) * $this->hours) +
+                (((60 * 60) * 24) * $this->days) +
+                ((((60 * 60) * 24) * 7) * $this->weeks) +
+                ((((60 * 60) * 24) * 30) * $this->months) +
+                ((((60 * 60) * 24) * 365.25) * $this->years);
 
             return $ret;
         }
 
-        public function ToBool(): bool
+        public function toMinuites(): int
         {
-            return Convert::ToBool($this->ToInt());
+            return $this->toSeconds() / 60;
         }
 
-        public function ToMinuites(): int
+        public function toHours(): int
         {
-            return $this->ToInt() / 60;
+            return $this->toSeconds() / (60 * 60);
         }
 
-        public function ToHours(): int
+        public function toDays(): int
         {
-            return $this->ToInt() / (60 * 60);
-        }
-
-        public function ToDays(): int
-        {
-            return $this->ToInt() / ((60 * 60) * 24);
+            return $this->toSeconds() / ((60 * 60) * 24);
         }
 
 
-        /**
-         * @param WixDate
-         * @return WixDate
-         * @comment this methods subtracts the duration from the datetime parameter supplied to it
-         */
-        function TimePast(WixDate $time): WixDate
-        {
-            return new WixDate(Convert::ToInt($time) - $this->ToInt());
-        }
-
-        /**
-         * @param WixDate
-         * @return WixDate
-         * @comment this method adds the duration from the datetime parameter supplied to it
-         */
-        function InFuture(WixDate $time): WixDate
-        {
-            return new WixDate(Convert::ToInt($time) + $this->ToInt());
-        }
+        #region static methods
 
         /**
          * @param $seconds
@@ -130,7 +111,7 @@
         static function Seconds($seconds)
         {
             $ret = new Duration();
-            $ret->Seconds = $seconds;
+            $ret->seconds = $seconds;
             return $ret;
         }
 
@@ -142,7 +123,7 @@
         static function Minutes($minutes): Duration
         {
             $ret = new Duration();
-            $ret->Minutes = $minutes;
+            $ret->minutes = $minutes;
             return $ret;
         }
 
@@ -154,7 +135,7 @@
         static function Hours($hours): Duration
         {
             $ret = new Duration();
-            $ret->Hours = $hours;
+            $ret->hours = $hours;
             return $ret;
         }
 
@@ -166,7 +147,7 @@
         static function Days($days): Duration
         {
             $ret = new Duration();
-            $ret->Days = $days;
+            $ret->days = $days;
             return $ret;
         }
 
@@ -178,7 +159,7 @@
         static function Weeks($weeks): Duration
         {
             $ret = new Duration();
-            $ret->Weeks = $weeks;
+            $ret->weeks = $weeks;
             return $ret;
         }
 
@@ -190,7 +171,7 @@
         static function Months($months): Duration
         {
             $ret = new Duration();
-            $ret->Minutes = $months;
+            $ret->minutes = $months;
             return $ret;
         }
 
@@ -202,7 +183,40 @@
         static function Years($years): Duration
         {
             $ret = new Duration();
-            $ret->Years = $years;
+            $ret->years = $years;
             return $ret;
         }
+        #endregion
+
+
+        #region implementing ISerializable
+
+        /**
+         * get db field type for creating the appropriate db field type for saving the class to db
+         * @return DBFieldType
+         */
+        public function _dbType(): DBFieldType
+        {
+            return DBFieldType::INT;
+        }
+
+        /**
+         * prepare the object for saving to db
+         * @return int
+         */
+        public function _serialize(): int
+        {
+            return $this->toSeconds();
+        }
+
+        /**
+         * re-populate object from data rceived from db
+         * @param mixed $data
+         * @return void
+         */
+        public function _deserialize($data): void
+        {
+            $this->init($data);
+        }
+        #region
     }

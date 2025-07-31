@@ -2,25 +2,30 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\Enum\DBFieldType;
+
     class DBTableField
     {
-        public string $Name = "";
+        public string $name = "";
+        public DBFieldType $type = DBFieldType::VARCHAR;
+        public int $length = 0;
+        public bool $isUnique = false;
+        public bool $isNull = false;
+        public bool $isPrimary = false;
+        public bool $isIndex = false;
+        public bool $autoIncrement = false;
+        public $default;
 
-        public string $Type = "";
-        public int $Length = 0;
-        public bool $IsUnique = false;
-        public bool $IsNull = false;
-        public bool $IsPrimary = false;
-        public bool $IsIndex = false;
-        public bool $AutoIncrement = false;
-        public $Default;
-
+        /**
+         * Get the field type as a string
+         * @return string
+         */
         public  function getDBType(): string
         {
-            if(($this->Type == DBFieldType::Varchar) || ($this->Type == DBFieldType::Char))
+            if(($this->type == DBFieldType::VARCHAR) || ($this->type == DBFieldType::CHAR))
             {
-                return  $this->Type."(".$this->Length.")";
+                return  $this->type->value."(".$this->length.")";
             }
-            return $this->Type;
+            return $this->type->value;
         }
     }

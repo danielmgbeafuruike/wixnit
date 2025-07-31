@@ -2,31 +2,36 @@
 
     namespace Wixnit\Access;
 
-    use Wixnit\Data\DBFieldType;
-    use Wixnit\Data\Interfaces\ISerializable;
+    use Wixnit\Enum\DBFieldType;
+    use Wixnit\Interfaces\ISerializable;
 
     class Access implements ISerializable
     {
-        public bool $ReadAccess = false;
-        public bool $WriteAccess = false;
+        public bool $read = false;
+        public bool $write = false;
 
         function __construct(int $access=0)
         {
-            $this->ReadAccess = $access === 1 || $access === 2;
-            $this->WriteAccess = $access === 1 || $access === 3;
+            $this->read = $access === 1 || $access === 2;
+            $this->write = $access === 1 || $access === 3;
         }
 
+
+        /**
+         * convert access to integer - 0 no access, 1 read and wrte, 2 read only & 3 write only
+         * @return int
+         */
         function toInt(): int
         {
-            if($this->ReadAccess && $this->WriteAccess)
+            if($this->read && $this->write)
             {
                 return 1;
             }
-            else if($this->ReadAccess && !$this->WriteAccess)
+            else if($this->read && !$this->write)
             {
                 return 2;
             }
-            else if(!$this->ReadAccess && $this->WriteAccess)
+            else if(!$this->read && $this->write)
             {
                 return 3;
             }
@@ -36,19 +41,37 @@
             }
         }
 
-        public function _DBType(): string
+
+
+        #region implementnig ISerializable functions
+
+        /**
+         * get db field type for creating the appropriate db field type for saving the class to db
+         * @return DBFieldType
+         */
+        public function _dbType(): DBFieldType
         {
-            return DBFieldType::Int;
+            return DBFieldType::INT;
         }
 
-        public function _Serialize(): int
+        /**
+         * prepare the object for saving to db
+         * @return int
+         */
+        public function _serialize(): int
         {
             return $this->toInt();
         }
 
-        public function _Deserialize($data)
+        /**
+         * re-populate object from data rceived from db
+         * @param mixed $data
+         * @return void
+         */
+        public function _deserialize($data): void
         {
-            $this->ReadAccess = intval($data) === 1 || intval($data) === 2;
-            $this->WriteAccess = intval($data) === 1 || intval($data) === 3;
+            $this->read = intval($data) === 1 || intval($data) === 2;
+            $this->write = intval($data) === 1 || intval($data) === 3;
         }
+        #endregion
     }

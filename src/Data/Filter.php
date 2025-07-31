@@ -2,24 +2,24 @@
 
     namespace Wixnit\Data;
 
-
+    use ReflectionClass;
     use ReflectionEnum;
+    use Wixnit\Enum\DBFieldType;
+    use Wixnit\Enum\FilterOperation;
+    use Wixnit\Interfaces\ISerializable;
+    use Wixnit\Utilities\Date;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
-    use Wixnit\Utilities\WixDate;
 
     class Filter
     {
-        public array $Parameters = [];
+        public array $parameters = [];
         public array $keys = [];
         protected array $values = [];
-        protected $operation = Filter::AND;
+        protected $operation = FilterOperation::AND;
 
-        const AND = 1;
-        const OR = 2;
-
-        function __construct($parameters=[], $set=Filter::AND)
+        function __construct($parameters=[], $set=FilterOperation::AND)
         {
             if(is_array($parameters))
             {
@@ -28,49 +28,40 @@
                 for($i = 0; $i < count($this->keys); $i++)
                 {
                     $this->values[] = $parameters[$this->keys[$i]];
-                    $this->Parameters[] = array($this->keys[$i] => $parameters[$this->keys[$i]]);
+                    $this->parameters[] = array($this->keys[$i] => $parameters[$this->keys[$i]]);
                 }
             }
 
-            if(($set == Filter::AND) || ($set == Filter::OR))
+            if(($set == FilterOperation::AND) || ($set == FilterOperation::OR))
             {
                 $this->operation = $set;
             }
         }
 
-        public static function Builder(): FilterBuilder
-        {
-            $args = func_get_args();
-            $builder = new FilterBuilder();
-
-            for($i = 0; $i < count($args); $i++)
-            {
-                if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
-                {
-                    $builder->add($args[$i]);
-                }
-                else
-                {
-                    $builder->setOperation($args[$i]);
-                }
-            }
-            return $builder;
-        }
-
-        public function Add($key="", $value="")
+        /**
+         * Add parameters to the filter
+         * @param mixed $key
+         * @param mixed $value
+         * @return void
+         */
+        public function add($key="", $value="")
         {
             if((is_string($key)) && (is_string($value)))
             {
                 $this->keys[] = $key;
                 $this->values[] = $value;
-                $this->Parameters[] = array($key => $value);
+                $this->parameters[] = array($key => $value);
             }
         }
 
-        public function getQuery(): DBSQLPrep
+        /**
+         * Get the query for the filter
+         * @return DBSQLPrep
+         */
+        public function getquery(): DBSQLPrep
         {
             $ret = new DBSQLPrep();
-            $ret->Query = " ";
+            $ret->query = " ";
 
             for($i = 0; $i < count($this->keys); $i++)
             {
@@ -80,129 +71,188 @@
                     {
                         for($g = 0; $g < count($this->values[$i]); $g++)
                         {
-                            $ret->Query .= ((trim($ret->Query) != "") ? (($this->operation == Filter::AND) ? " AND " : " OR ") : "");
+                            $ret->query .= ((trim($ret->query) != "") ? (($this->operation == FilterOperation::AND) ? " AND " : " OR ") : "");
 
                             if($this->values[$i][$g] instanceof Span)
                             {
                                 $range = new Range($this->values[$i][$g]);
-                                $ret->Query .= "(".$this->keys[$i]." >= ? AND ".$this->keys[$i]." <= ?)";
+                                $ret->query .= "(".$this->keys[$i]." >= ? AND ".$this->keys[$i]." <= ?)";
 
-                                $ret->Values[] = $range->Start;
-                                $ret->Values[] = $range->Stop;
+                                $ret->values[] = $range->start;
+                                $ret->values[] = $range->stop;
 
-                                $ret->Types[] = "d";
-                                $ret->Types[] = "d";
+                                $ret->types[] = "d";
+                                $ret->types[] = "d";
                             }
-                            else if($this->values[$i][$g] instanceof greaterThan)
+                            else if($this->values[$i][$g] instanceof GreaterThan)
                             {
-                                $ret->Query .= $this->keys[$i].">".($this->values[$i][$g]->orEqualTo ? "= " : " ").(($this->values[$i][$g]->Value instanceof fieldName) ? $this->values[$i][$g]->Value->Name : "?");
+                                $ret->query .= $this->keys[$i].">".($this->values[$i][$g]->orEqualTo ? "= " : " ").(($this->values[$i][$g]->value instanceof fieldName) ? $this->values[$i][$g]->value->name : "?");
 
-                                if(!($this->values[$i][$g]->Value instanceof fieldName))
+                                if(!($this->values[$i][$g]->value instanceof FieldName))
                                 {
-                                    $ret->Values[] = $this->values[$i][$g]->Value;
-                                    $ret->Types[] =  is_string($this->values[$i][$g]->Value) ? "s" : (is_float($this->values[$i][$g]->Value) ? "d" : "i");
+                                    $ret->values[] = $this->values[$i][$g]->value;
+                                    $ret->types[] =  is_string($this->values[$i][$g]->value) ? "s" : (is_float($this->values[$i][$g]->value) ? "d" : "i");
                                 }
                             }
-                            else if($this->values[$i][$g] instanceof lessThan)
+                            else if($this->values[$i][$g] instanceof LessThan)
                             {
-                                $ret->Query .= $this->keys[$i]."<".($this->values[$i][$g]->orEqualTo ? "= " : " ").(($this->values[$i][$g]->Value instanceof fieldName) ? $this->values[$i][$g]->Value->Name : "?");
+                                $ret->query .= $this->keys[$i]."<".($this->values[$i][$g]->orEqualTo ? "= " : " ").(($this->values[$i][$g]->value instanceof fieldName) ? $this->values[$i][$g]->value->name : "?");
 
-                                if(!($this->values[$i][$g]->Value instanceof fieldName))
+                                if(!($this->values[$i][$g]->value instanceof FieldName))
                                 {
-                                    $ret->Values[] = $this->values[$i][$g]->Value;
-                                    $ret->Types[] =  is_string($this->values[$i][$g]->Value) ? "s" : (is_float($this->values[$i][$g]->Value) ? "d" : "i");
+                                    $ret->values[] = $this->values[$i][$g]->value;
+                                    $ret->types[] =  is_string($this->values[$i][$g]->value) ? "s" : (is_float($this->values[$i][$g]->value) ? "d" : "i");
                                 }
                             }
-                            else if($this->values[$i][$g] instanceof notEqual)
+                            else if($this->values[$i][$g] instanceof NotEqual)
                             {
-                                for($k = 0; $k < count($this->values[$i][$g]->Value); $k++)
+                                for($k = 0; $k < count($this->values[$i][$g]->value); $k++)
                                 {
-                                    $ret->Query .= $this->keys[$i]."!=".(($this->values[$i][$g]->Value[$k] instanceof fieldName) ? $this->values[$i][$g]->Value[$k]->Name : "?");
+                                    $ret->query .= $this->keys[$i]."!=".(($this->values[$i][$g]->value[$k] instanceof FieldName) ? $this->values[$i][$g]->value[$k]->name : "?");
 
-                                    if(!($this->values[$i][$g]->Value[$k] instanceof fieldName))
+                                    if(!($this->values[$i][$g]->value[$k] instanceof FieldName))
                                     {
-                                        $ret->Values[] = $this->values[$i][$g]->Value[$k];
-                                        $ret->Types[] =  is_string($this->values[$i][$g]->Value[$k]) ? "s" : (is_float($this->values[$i][$g]->Value[$k]) ? "d" : "i");
+                                        $ret->values[] = $this->values[$i][$g]->value[$k];
+                                        $ret->types[] =  is_string($this->values[$i][$g]->value[$k]) ? "s" : (is_float($this->values[$i][$g]->value[$k]) ? "d" : "i");
                                     }
+                                }
+                            }
+                            else if(is_object($this->values[$i][$g]) && (!($this->values[$i][$g] instanceof FieldName)) && (!($this->values[$i][$g] instanceof \UnitEnum)))
+                            {
+                                if((new ReflectionClass($this->values[$i][$g]))->implementsInterface(ISerializable::class))
+                                {
+                                    $ret->query .= ($this->keys[$i]."= ?");
+
+                                    $ret->values[] = $this->values[$i][$g]->_serialize();
+                                    $ret->types[] = in_array($this->values[$i][$g]->_dbType(), [DBFieldType::INT, DBFieldType::TINY_INT, DBFieldType::SMALL_INT, DBFieldType::MEDIUM_INT, DBFieldType::BIG_INT]) ? "i" : (in_array($this->values[$i][$g]->_dbType(), [DBFieldType::DECIMAL, DBFieldType::FLOAT, DBFieldType::DOUBLE, DBFieldType::BIT]) ? "d" : "s");
+                                }
+                                else if($this->values[$i][$g] instanceof Transactable)
+                                {
+                                    $ret->query .= ($this->keys[$i]."= ?");
+
+                                    $ret->values[] = $this->values[$i][$g]->id;
+                                    $ret->types[] = "s";
+                                }
+                                else
+                                {
+                                    $ret->query .= ($this->keys[$i]."= ?");
+
+                                    $ret->values[] = json_encode($this->values[$i][$g]);
+                                    $ret->types[] = "s";
                                 }
                             }
                             else
                             {
-                                $ret->Query .= ($this->keys[$i]."=".(($this->values[$i][$g] instanceof fieldName) ? $this->values[$i][$g]->Name : "?"));
+                                $ret->query .= ($this->keys[$i]."=".(($this->values[$i][$g] instanceof FieldName) ? $this->values[$i][$g]->name : "?"));
 
-                                if(!($this->values[$i][$g] instanceof fieldName))
+                                if(!($this->values[$i][$g] instanceof FieldName))
                                 {
-                                    $ret->Values[] = $this->values[$i][$g];
-                                    $ret->Types[] =  (is_string($this->values[$i][$g]) ? "s" : (is_float($this->values[$i][$g]) ? "d" : "i"));
+                                    //$ret->values[] = $this->values[$i][$g];
+                                    //$ret->types[] =  (is_string($this->values[$i][$g]) ? "s" : (is_float($this->values[$i][$g]) ? "d" : "i"));
+                                
+                                    $ret->values[] = (($this->values[$i][$g] instanceof \UnitEnum) ? self::GetEnumvalue($this->values[$i][$g]) : $this->values[$i][$g]);
+                                    $ret->types[] = (($this->values[$i][$g] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i][$g]) :  (is_string($this->values[$i][$g]) ? "s" : (is_float($this->values[$i][$g]) ? "d" : "i")));
                                 }
                             }
                         }
                     }
                     else
                     {
-                        $ret->Query .= ((trim($ret->Query) != "") ? (($this->operation == Filter::AND) ? " AND " : " OR ") : "");
+                        $ret->query .= ((trim($ret->query) != "") ? (($this->operation == FilterOperation::AND) ? " AND " : " OR ") : "");
 
                         if($this->values[$i] instanceof Span)
                         {
                             $range = new Range($this->values[$i]);
-                            $ret->Query .= "(".$this->keys[$i]." >= ? AND ".$this->keys[$i]." <= ?)";
+                            $ret->query .= "(".$this->keys[$i]." >= ? AND ".$this->keys[$i]." <= ?)";
 
-                            $ret->Values[] = $range->Start;
-                            $ret->Values[] = $range->Stop;
+                            $ret->values[] = $range->start;
+                            $ret->values[] = $range->stop;
 
-                            $ret->Types[] = "d";
-                            $ret->Types[] = "d";
+                            $ret->types[] = "d";
+                            $ret->types[] = "d";
                         }
-                        else if($this->values[$i] instanceof greaterThan)
+                        else if($this->values[$i] instanceof GreaterThan)
                         {
-                            $ret->Query .= $this->keys[$i].">".($this->values[$i]->orEqualTo ? "= " : " ").(($this->values[$i]->Value instanceof fieldName) ? $this->values[$i]->Value->Name : "?");
+                            $ret->query .= $this->keys[$i].">".($this->values[$i]->orEqualTo ? "= " : " ").(($this->values[$i]->value instanceof FieldName) ? $this->values[$i]->value->name : "?");
 
-                            if(!($this->values[$i]->Value instanceof fieldName))
+                            if(!($this->values[$i]->value instanceof FieldName))
                             {
-                                $ret->Values[] = $this->values[$i]->Value;
-                                $ret->Types[] =  is_string($this->values[$i]->Value) ? "s" : (is_float($this->values[$i]->Value) ? "d" : "i");
+                                $ret->values[] = $this->values[$i]->value;
+                                $ret->types[] =  is_string($this->values[$i]->value) ? "s" : (is_float($this->values[$i]->value) ? "d" : "i");
                             }
                         }
-                        else if($this->values[$i] instanceof lessThan)
+                        else if($this->values[$i] instanceof LessThan)
                         {
-                            $ret->Query .= $this->keys[$i]."<".($this->values[$i]->orEqualTo ? "= " : " ").(($this->values[$i]->Value instanceof fieldName) ? $this->values[$i]->Value->Name : "?");
+                            $ret->query .= $this->keys[$i]."<".($this->values[$i]->orEqualTo ? "= " : " ").(($this->values[$i]->value instanceof FieldName) ? $this->values[$i]->value->name : "?");
 
-                            if(!($this->values[$i]->Value instanceof fieldName))
+                            if(!($this->values[$i]->value instanceof FieldName))
                             {
-                                $ret->Values[] = $this->values[$i]->Value;
-                                $ret->Types[] =  is_string($this->values[$i]->Value) ? "s" : (is_float($this->values[$i]->Value) ? "d" : "i");
+                                $ret->values[] = $this->values[$i]->value;
+                                $ret->types[] =  is_string($this->values[$i]->value) ? "s" : (is_float($this->values[$i]->value) ? "d" : "i");
                             }
                         }
-                        else if($this->values[$i] instanceof notEqual)
+                        else if($this->values[$i] instanceof NotEqual)
                         {
-                            for($k = 0; $k < count($this->values[$i]->Value); $k++)
+                            for($k = 0; $k < count($this->values[$i]->value); $k++)
                             {
-                                $ret->Query .= $this->keys[$i]."!=".(($this->values[$i]->Value[$k] instanceof fieldName) ? $this->values[$i]->Value[$k]->Name : "?");
+                                $ret->query .= $this->keys[$i]."!=".(($this->values[$i]->value[$k] instanceof FieldName) ? $this->values[$i]->value[$k]->name : "?");
 
-                                if(!($this->values[$i]->Value[$k] instanceof fieldName))
+                                if(!($this->values[$i]->value[$k] instanceof FieldName))
                                 {
-                                    $ret->Values[] = (($this->values[$i]->Value[$k] instanceof \UnitEnum) ? self::GetEnumValue($this->values[$i]->Value[$k]) : $this->values[$i]->Value[$k]);
-                                    $ret->Types[] =  (($this->values[$i]->Value[$k] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]->Value[$k]) :  (is_string($this->values[$i]->Value[$k]) ? "s" : (is_float($this->values[$i]->Value[$k]) ? "d" : "i")));
+                                    $ret->values[] = (($this->values[$i]->value[$k] instanceof \UnitEnum) ? self::GetEnumvalue($this->values[$i]->value[$k]) : $this->values[$i]->value[$k]);
+                                    $ret->types[] =  (($this->values[$i]->value[$k] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]->value[$k]) :  (is_string($this->values[$i]->value[$k]) ? "s" : (is_float($this->values[$i]->value[$k]) ? "d" : "i")));
                                 }
+                            }
+                        }
+                        else if(is_object($this->values[$i]) && (!($this->values[$i] instanceof FieldName)) && (!($this->values[$i] instanceof \UnitEnum)))
+                        {
+                            if((new ReflectionClass($this->values[$i]))->implementsInterface(ISerializable::class))
+                            {
+                                $ret->query .= ($this->keys[$i]."= ?");
+
+                                $ret->values[] = $this->values[$i]->_serialize();
+                                $ret->types[] = in_array($this->values[$i]->_dbType(), [DBFieldType::INT, DBFieldType::TINY_INT, DBFieldType::SMALL_INT, DBFieldType::MEDIUM_INT, DBFieldType::BIG_INT]) ? "i" : (in_array($this->values[$i]->_dbType(), [DBFieldType::DECIMAL, DBFieldType::FLOAT, DBFieldType::DOUBLE, DBFieldType::BIT]) ? "d" : "s");
+                            }
+                            else if($this->values[$i] instanceof Transactable)
+                            {
+                                $ret->query .= ($this->keys[$i]."= ?");
+
+                                $ret->values[] = $this->values[$i]->id;
+                                $ret->types[] = "s";
+                            }
+                            else
+                            {
+                                $ret->query .= ($this->keys[$i]."= ?");
+
+                                $ret->values[] = json_encode($this->values[$i]);
+                                $ret->types[] = "s";
                             }
                         }
                         else
                         {
-                            $ret->Query .= ($this->keys[$i]."=".(($this->values[$i] instanceof fieldName) ? $this->values[$i]->Name : "?"));
+                            $ret->query .= ($this->keys[$i]."=".(($this->values[$i] instanceof FieldName) ? $this->values[$i]->name : "?"));
 
-                            if(!($this->values[$i] instanceof fieldName))
+                            if(!($this->values[$i] instanceof FieldName))
                             {
-                                $ret->Values[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumValue($this->values[$i]) : $this->values[$i]);
-                                $ret->Types[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]) :  (is_string($this->values[$i]) ? "s" : (is_float($this->values[$i]) ? "d" : "i")));
+                                $ret->values[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumvalue($this->values[$i]) : $this->values[$i]);
+                                $ret->types[] = (($this->values[$i] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($this->values[$i]) :  (is_string($this->values[$i]) ? "s" : (is_float($this->values[$i]) ? "d" : "i")));
                             }
                         }
                     }
                 }
             }
-            $ret->Query .= " ";
+            $ret->query .= " ";
             return $ret;
         }
 
+
+        #region static methods
+
+        /**
+         * Get the backing type of an enum value as a database character
+         * @param \UnitEnum $value
+         * @return string
+         */
         public static function GetEnumBackingTypeDBCharacter(\UnitEnum $value): string
         {
             $ref = new ReflectionEnum($value);
@@ -230,7 +280,12 @@
             }
         }
 
-        public static function GetEnumValue(\UnitEnum $value)
+        /**
+         * Get the value of an enum
+         * @param \UnitEnum $value
+         * @return mixed
+         */
+        public static function GetEnumvalue(\UnitEnum $value)
         {
             if(isset($value->value))
             {
@@ -253,10 +308,16 @@
             }
         }
 
+        /**
+         * Get a list of items by their creation date
+         * @param array $list
+         * @param Timespan $timespan
+         * @return array
+         */
         public static function ByCreationDate($list, Timespan $timespan): array
         {
             $ret = [];
-            $range = new Range(new Span($timespan->Start, $timespan->Stop));
+            $range = new Range(new Span($timespan->start, $timespan->stop));
 
             if(is_array($list))
             {
@@ -264,7 +325,7 @@
                 {
                     if(isset($list[$i]->Created))
                     {
-                        if(((new WixDate($list[$i]->Created))->getValue() >= $range->Start) && ((new WixDate($list[$i]->Created))->getValue() <= $range->Stop))
+                        if(((new Date($list[$i]->Created))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->Created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
@@ -274,10 +335,16 @@
             return $ret;
         }
 
+        /**
+         * Get a list of items by their modified date
+         * @param array $list
+         * @param Timespan $timespan
+         * @return array
+         */
         public static function ByModifiedDate($list, Timespan $timespan): array
         {
             $ret = [];
-            $range = new Range(new Span($timespan->Start, $timespan->Stop));
+            $range = new Range(new Span($timespan->start, $timespan->stop));
 
             if(is_array($list))
             {
@@ -285,7 +352,7 @@
                 {
                     if(isset($list[$i]->Modified))
                     {
-                        if(((new WixDate($list[$i]->Modified))->getValue() >= $range->Start) && ((new WixDate($list[$i]->Created))->getValue() <= $range->Stop))
+                        if(((new Date($list[$i]->Modified))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->Created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
@@ -295,6 +362,13 @@
             return $ret;
         }
 
+        /**
+         * Get a list of items by their creation date
+         * @param array $list
+         * @param string $field
+         * @param Span $span
+         * @return array
+         */
         public static function ByRange($list, $field, Span $span): array
         {
             $ret = [];
@@ -305,6 +379,13 @@
             return $ret;
         }
 
+        /**
+         * Get a list of items by their field value
+         * @param array $list
+         * @param string $field
+         * @param mixed $value
+         * @return array
+         */
         public static function Exclusive($list, $field, $value): array
         {
             $ret = [];
@@ -315,7 +396,12 @@
             return $ret;
         }
 
-        public static function removeDuplicates($list): array
+        /**
+         * Remove duplicates from a list
+         * @param array $list
+         * @return array
+         */
+        public static function RemoveDuplicates($list): array
         {
             $ret = [];
             $store = [];
@@ -340,5 +426,29 @@
                 }
             }
             return $ret;
+        } 
+
+        /**
+         * Create a filter builder
+         * @return FilterBuilder
+         */
+        public static function Builder(): FilterBuilder
+        {
+            $args = func_get_args();
+            $builder = new FilterBuilder();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                {
+                    $builder->add($args[$i]);
+                }
+                else
+                {
+                    $builder->setOperation($args[$i]);
+                }
+            }
+            return $builder;
         }
+        #endregion
     }

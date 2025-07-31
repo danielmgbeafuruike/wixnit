@@ -8,10 +8,22 @@
     {
         function __construct($value1, $value2=null, $constraint=null)
         {
+            $this->init($value1, $value2, $constraint);
+        }
+
+        /**
+         * hydrate the range with values
+         * @param mixed $value1
+         * @param mixed $value2
+         * @param mixed $constraint
+         * @return void
+         */
+        private function init($value1, $value2=null, $constraint=null): void
+        {
             if($value1 instanceof Span)
             {
-                $this->Start = $value1->Start <= $value1->Stop ? $value1->Start : $value1->Stop;
-                $this->Stop = $value1->Start <= $value1->Stop ? $value1->Stop : $value1->Start;
+                $this->start = $value1->start <= $value1->stop ? $value1->start : $value1->stop;
+                $this->stop = $value1->start <= $value1->stop ? $value1->stop : $value1->start;
             }
             else if(is_array($value1))
             {
@@ -19,8 +31,8 @@
             }
             else if(isset($value2))
             {
-                $this->Start = $value1 > $value2 ? $value1 : $value2;
-                $this->Stop = $value1 > $value2 ? $value2 : $value1;
+                $this->start = $value1 > $value2 ? $value1 : $value2;
+                $this->stop = $value1 > $value2 ? $value2 : $value1;
             }
 
             if($constraint != null)
@@ -29,46 +41,32 @@
             }
         }
 
+        /**
+         * convert the range to a span
+         * @return Span
+         */
         public function toSpan(): Span
         {
-            return new Span($this->Start, $this->Stop);
+            return new Span($this->start, $this->stop);
         }
 
-        public function toTimespan(): Timespan
+        /**
+         * convert the range to a timespan
+         * @return Timespan
+         */
+        public function toTimespan(bool $spaLastDay=true): Timespan
         {
-            return new Timespan($this->Start, $this->Stop);
+            return new Timespan($this->start, $this->stop, $spaLastDay);
         }
 
-        public function InRange($value): bool
+        /**
+         * check if a value is within the range
+         * @param mixed $value
+         * @return bool
+         */
+        public function inRange($value): bool
         {
-            return (($this->Start >= $value) && ($this->Stop <= $value));
-        }
-
-        public function Serialize()
-        {
-            $ret = new stdClass();
-            $ret->Type = "Range";
-            $ret->Start = $this->Start;
-            $ret->Stop = $this->Stop;
-
-            return json_encode($ret);
-        }
-
-        public static function Deserialize($serialized_span) : Range
-        {
-            $ret = new Range(new Span());
-
-            if(is_string($serialized_span))
-            {
-                $r = json_decode($serialized_span);
-
-                if($r->Type == "Range")
-                {
-                    $ret->Start = isset($r->Start) ? Convert::ToInt($r->Start) : 0;
-                    $ret->Stop = isset($r->Stop) ? Convert::ToInt($r->Stop) : 0;
-                }
-            }
-            return $ret;
+            return (($this->start >= $value) && ($this->stop <= $value));
         }
     }
     

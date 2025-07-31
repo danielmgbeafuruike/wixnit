@@ -24,6 +24,11 @@
             $this->arg_data = ($request_data != null) ? $request_data : $this->arg_data;
         }
 
+        /**
+         * add values to be validated
+         * @param array $args
+         * @return void
+         */
         function addValues($args=[])
         {
             $keys = array_keys($args);
@@ -35,6 +40,10 @@
             }
         }
 
+        /**
+         * test the values against the validations
+         * @return bool
+         */
         function test() : bool
         {
             $failed = false;
@@ -81,7 +90,7 @@
                                 $this->errorValues[] = $this->values[$i];
                             }
                         }
-                        if(in_array("string", $vs))
+                        if(in_array("string", $vs) || in_array("text", $vs))
                         {
                             if(!is_string($this->arg_data[$this->values[$i]]))
                             {
@@ -111,7 +120,7 @@
                                 $this->errorValues[] = $this->values[$i];
                             }
                         }
-                        if(in_array("url", $vs))
+                        if(in_array("url", $vs) || in_array("link", $vs) || in_array("website", $vs) || in_array("uri", $vs))
                         {
                             if(!preg_match("/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*[-a-z0-9+&@#\/%=~_|]/i", $this->arg_data[$this->values[$i]]))
                             {
@@ -155,6 +164,42 @@
                         /**
                          * validate the variable min and max length
                          */
+
+                        if(in_array("min", $vs))
+                        {
+                            $min = 0;
+                            $minIndex = array_search("min", $vs);
+                            if($minIndex !== false && isset($vs[$minIndex + 1]))
+                            {
+                                $min = (int)$vs[$minIndex + 1];
+                            }
+
+                            if(strlen($this->arg_data[$this->values[$i]]) < $min)
+                            {
+                                $failed = true;
+
+                                $this->errors[] = [$this->values[$i] => "minimum length is " . $min];
+                                $this->errorValues[] = $this->values[$i];
+                            }
+                        }
+
+                        if(in_array("max", $vs))
+                        {
+                            $max = 0;
+                            $maxIndex = array_search("max", $vs);
+                            if($maxIndex !== false && isset($vs[$maxIndex + 1]))
+                            {
+                                $max = (int)$vs[$maxIndex + 1];
+                            }
+
+                            if(strlen($this->arg_data[$this->values[$i]]) > $max)
+                            {
+                                $failed = true;
+
+                                $this->errors[] = [$this->values[$i] => "maximum length is " . $max];
+                                $this->errorValues[] = $this->values[$i];
+                            }
+                        }
                     }
                 }
                 else
@@ -163,5 +208,46 @@
                 }
             }
             return !$failed;
+        }
+
+        /**
+         * get the error text
+         * @return string
+         */
+
+        public function getErrorText(): string
+        {
+            $this->errorText = "";
+            if(count($this->errors) > 0)
+            {
+                foreach($this->errors as $error)
+                {
+                    foreach($error as $key => $value)
+                    {
+                        $this->errorText .= "$key: $value\n";
+                    }
+                }
+            }
+            return $this->errorText;
+        }
+
+        /**
+         * get the error values
+         * @return array
+         */
+
+        public function getErrorValues(): array
+        {
+            return $this->errorValues;
+        }
+
+        /**
+         * get the errors
+         * @return array
+         */
+
+        public function getErrors(): array
+        {
+            return $this->errors;
         }
     }

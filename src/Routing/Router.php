@@ -2,21 +2,13 @@
 
 namespace Wixnit\Routing;
 
+use Closure;
 use Wixnit\App\Controller;
 use Wixnit\App\View;
 use Wixnit\Enum\HTTPMethod;
 
 class Router
 {
-    const GET = "GET";
-    const POST = "POST";
-    const PUT = "PUT";
-    const HEAD = "HEAD";
-    const OPTION = "OPTION";
-    const PATCH = "PATCH";
-    const DELETE = "DELETE";
-    const ANY = "*";
-
     public string $page = "";
     public array $args = [];
     public array $routedArgs = [];
@@ -46,215 +38,245 @@ class Router
         }
     }
 
-    public function Any($route, $arg, $method=null)
+    /**
+     * add routes that can process request with any method
+     * @param string $path
+     * @param string|Closure|View|Path $arg
+     * @param string|null $handlerMethod
+     * @return RouteCollection
+     */
+    public function any(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"*", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::ANY, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"*", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::ANY, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Put($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with PUT method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function put(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"PUT", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::PUT, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"PUT", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::PUT, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Post($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with POST method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function post(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"POST", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::POST, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"POST", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::POST, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Get($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with GET method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function get(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"GET", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::GET, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"GET", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::GET, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Delete($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with DELETE method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function delete(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"DELETE", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::DELETE, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"DELETE", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::DELETE, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Patch($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with DELETE method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function patch(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"PATCH", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::PATCH, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"PATCH", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::PATCH, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function Head($route, $arg, $method=null)
+    /**
+     * add routes that process requests send with HEAD method
+     * @param string $path
+     * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
+     * @param mixed $handlerMethod
+     * @return RouteCollection
+     */
+    public function head(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($route))
+        if(is_array($path))
         {
-            for($i = 0; $i < count($route); $i++)
+            $rt = new RouteCollection();
+            for($i = 0; $i < count($path); $i++)
             {
-                $this->routes[] = ["method"=>"HEAD", "path"=>trim($route[$i], "/"), "arg"=>$arg, "call"=>$method];
+                $rt->addRoute(new Route($path[$i], HTTPMethod::HEAD, $handler, $handlerMethod));
             }
+            $this->routes[] = $rt;
+            return $rt;
         }
         else
         {
-            $this->routes[] = ["method"=>"HEAD", "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
+            $rt = new RouteCollection();
+            $rt->addRoute(new Route($path, HTTPMethod::HEAD, $handler, $handlerMethod));
+            $this->routes[] = $rt;
+            return $rt;
         }
     }
 
-    public function MapRoutes()
+    /**
+     * resolve requests to their routes
+     * @return void
+     */
+    public function mapRoutes()
     {
-        $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
-    
+        //get the request method
+        $method = Router::GetMethod();
+
+
+        //get all routes from their collections
+        $routeList = [];
 
         for($i = 0; $i < count($this->routes); $i++)
         {
-            if((($this->routes[$i]['method'] == $method) || ($this->routes[$i]['method'] == "*")) && $this->matchRoute($this->routes[$i]['path'], $this->requestURL))
+            if($this->routes[$i] instanceof Route)
             {
+                $routeList[] = $this->routes[$i];
+            }
+            else if($this->routes[$i] instanceof RouteCollection)
+            {
+                $rl = $this->routes[$i]->getRoutes();
+
+                for($j = 0; $j < count($rl); $j++)
+                {
+                    $routeList[] = $rl[$j];
+                }
+            }
+        }
+
+        //loop through the routes and check if they match the request URL
+        for($i = 0; $i < count($routeList); $i++)
+        {
+            if($routeList[$i]->matches($this->requestURL, $method))
+            {
+                //get the routed args
+                $this->routedArgs = $routeList[$i]->getRoutedArgs();
+
+                //prepre the request object for the request
                 $req = $this->buildRequest();
 
-                if($this->routes[$i]['arg'] instanceof View)
-                {
-                    $instance = $this->routes[$i]['arg'];
-                    $instance->Render($req);
-                }
-                else if($this->routes[$i]['arg'] instanceof Path)
-                {
-                    if(file_exists($this->routes[$i]['arg']->Path))
-                    {
-                        $instance = $this->routes[$i]['arg'];
-                        $instance->Require();
-                        return;
-                    }
-                    if($this->errorPagePath != "")
-                    {
-                        http_response_code(404);
-                        require_once ($this->errorPagePath);
-                    }
-                    else
-                    {
-                        $this->showResourceNotFound();
-                    }
-                }
-                else if((new \ReflectionClass($this->routes[$i]['arg']))->isInstantiable() || (($this->routes[$i]['arg'] instanceof Controller)))
-                {
-                    $ref = new \ReflectionClass($this->routes[$i]['arg']);
-                    $instance = (($this->routes[$i]['arg'] instanceof Controller) ? $this->routes[$i]['arg'] : $ref->newInstance());
-
-                    if($this->routes[$i]['call'] != null)
-                    {
-                        $callMethod = $this->routes[$i]['call'];
-                        $instance->$callMethod($req);
-                    }
-                    else if($instance instanceof Controller)
-                    {
-                        if($method == "POST")
-                        {
-                            $instance->Create($req);
-                        }
-                        else if($method == "PUT")
-                        {
-                            $instance->Update($req);
-                        }
-                        else if($method == "DELETE")
-                        {
-                            $instance->Delete($req);
-                        }
-                        else if($method == "PATCH")
-                        {
-                            $instance->Patch($req);
-                        }
-                        else if($method == "GET")
-                        {
-                            $instance->Get($req);
-                        }
-                        else if($method == "HEAD")
-                        {
-                            $instance->Head($req);
-                        }
-                        else if($method == "OPTION")
-                        {
-                            $instance->Option($req);
-                        }
-                    }
-                    else
-                    {
-                        if($this->errorPagePath != "")
-                        {
-                            http_response_code(404);
-                            require_once ($this->errorPagePath);
-                        }
-                        else
-                        {
-                            $this->showResourceNotFound();
-                        }
-                    }
-                }
-                else if((is_string($this->routes[$i]['arg']) && function_exists($this->routes[$i]['arg'])) || (is_object($this->routes[$i]['arg']) && ($this->routes[$i]['arg'] instanceof \Closure)))
-                {
-                    $this->routes[$i]['arg']($req);
-                }
-                else
-                {
-                    if($this->errorPagePath != "")
-                    {
-                        http_response_code(404);
-                        require_once ($this->errorPagePath);
-                    }
-                    else
-                    {
-                        $this->showResourceNotFound();
-                    }
-                }
+                //execute the route
+                $routeList[$i]->execute($req);
                 return;
             }
         }
@@ -269,89 +291,104 @@ class Router
         }
     }
 
-    public static function Add($request_method, string $route, $arg, string $method=null): array
+    /**
+     * Create a new RouteCollection with a root route
+     * @param string $path
+     * @param array $routes
+     * @return RouteCollection
+     */
+    public function group(string $path, array $routes): RouteCollection
     {
-        return ["method"=>strtoupper($request_method), "path"=>trim($route, "/"), "arg"=>$arg, "call"=>$method];
-    }
+        $rt = new RouteCollection();
 
-    public function Group(string $route, array $routes)
-    {
         for($i = 0; $i < count($routes); $i++)
         {
-            if(array_key_exists("path", $routes[$i]))
+            if(($routes[$i] instanceof Route) || ($routes[$i] instanceof RouteCollection))
             {
-                $routes[$i]["path"] = trim($route."/".$routes[$i]['path'], "/");
-
-                if(array_key_exists("method", $routes[$i]) && array_key_exists("arg", $routes[$i]) && array_key_exists("call", $routes[$i]))
-                {
-                    $this->routes[] = $routes[$i];
-                }
+                $rt->addRoute($routes[$i]);
             }
         }
+        $rt->setRoot($path);
+
+        //add it to the route stack
+        $this->routes[] = $rt;
+        return $rt;
     }
 
-    public function HomeRoute($arg, $method=null)
+    /**
+     * Set the error page path to be used when a route is not found
+     * @param string $path
+     * @return void
+     */
+    public function setErrorPagePath(string $path): void
+    {
+        $this->errorPagePath = $path;
+    }
+
+    /**
+     * Set the home route path
+     * @param string $arg
+     * @param string|null $method
+     * @return void
+     */
+    public function setHomeRoute($arg, $method=null)
     {
         $this->homePath = $arg;
     }
 
-    public function Redirect($from, $to)
+    /**
+     * set redirection routes
+     * @param mixed $from
+     * @param mixed $to
+     * @return void
+     */
+    public function redirect($from, $to)
     {
         $this->redirects[] = ["from"=>$from, "to"=>$to];
     }
 
-    public static function ResolvePath($path, $pathInfo=null): string
+    /**
+     * Save data routes to the global scope. This will enable the data routes to be used anywhere in the application
+     * @return void
+     */
+    public function globalizeDataRoutes()
     {
-        $ret = $path;
-        $prepend = "";
-        $extra = false;
+        $keys = array_keys($this->dataRouteArgs);
+        $dataRoute = "";
 
-        if($pathInfo === null)
+        for($i = 0; $i < count($keys); $i++)
         {
-            if((isset($_SERVER['PATH_INFO'])) ||(isset($_SERVER['ORIG_PATH_INFO'])))
-            {
-                $tmp = isset($_REQUEST['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO'])) : explode("/", trim($_SERVER['PATH_INFO']));
-
-                if($tmp[(count($tmp) - 1)] == "")
-                {
-                    $extra = true;
-                }
-
-                $ds = isset($_SERVER['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO']), "/") : explode("/", trim($_SERVER['PATH_INFO'], "/"));
-                for($i = 0; $i < (count($ds) - 1); $i++)
-                {
-                    $prepend .= "../";
-                }
-            }
+            $dataRoute .= "/".$this->dataRouteArgs[$keys[$i]];
         }
-        else
-        {
-            if((isset($pathInfo)) && ($pathInfo != ""))
-            {
-                $tmp = explode("/", $pathInfo);
+        $dataRoute = trim($dataRoute, '/');
 
-                if($tmp[(count($tmp) - 1)] == "")
-                {
-                    $extra = true;
-                }
-
-                $ds = explode("/", trim($pathInfo, "/"));
-                for($i = 0; $i < (count($ds) - 1); $i++)
-                {
-                    $prepend .= "../";
-                }
-            }
-        }
-
-
-        if($extra)
-        {
-            $ret = "../".$ret;
-        }
-
-        return $prepend.$ret;
+        $GLOBALS['data-routes'] = $this->dataRoute;
+        $GLOBALS['route-args']= $this->dataRouteArgs;
+        $GLOBALS['data-route-string'] = $dataRoute;
+        $GLOBALS['current-path'] = $this->requestURL;
     }
 
+    /**
+     * Set the data route for the router
+     * @param array $routes
+     * @return void
+     */
+    public function setDataRoute(array $routes=[])
+    {
+        $this->dataRoute = $routes;
+    }
+
+    
+
+
+    #region static method
+
+    /**
+     * Adjust URL to stay poniting at the default set URL relative to the current URL
+     * @param mixed $path
+     * @param mixed $pathInfo
+     * @return string
+     */
     public static function ResolveURL($path, $pathInfo=null): string
     {
         $ret = $path;
@@ -405,24 +442,11 @@ class Router
         return $prepend.(($dPath != "") ? Router::GetDataRoutString()."/" : "").$ret;
     }
 
-    public function GlobalizeDataRoutes()
-    {
-        $keys = array_keys($this->dataRouteArgs);
-        $dataRoute = "";
-
-        for($i = 0; $i < count($keys); $i++)
-        {
-            $dataRoute .= "/".$this->dataRouteArgs[$keys[$i]];
-        }
-        $dataRoute = trim($dataRoute, '/');
-
-        $GLOBALS['data-routes'] = $this->dataRoute;
-        $GLOBALS['route-args']= $this->dataRouteArgs;
-        $GLOBALS['data-route-string'] = $dataRoute;
-        $GLOBALS['current-path'] = $this->requestURL;
-    }
-
-    public static function GetDataRoutString(): string
+    /**
+     * Get the global data route string
+     * @return string
+     */
+    public static function GetDataRouteString(): string
     {
         if(isset($GLOBALS['data-route-string']))
         {
@@ -431,6 +455,10 @@ class Router
         return "";
     }
 
+    /**
+     * Get router data routes
+     * @return array
+     */
     public static function GetDataRoutes(): array
     {
         if(isset($GLOBALS['data-routes']))
@@ -440,6 +468,10 @@ class Router
         return [];
     }
 
+    /**
+     * Get router data route args
+     * @return array
+     */
     public static function GetDataRouteArgs(): array
     {
         if(isset($GLOBALS['route-args']))
@@ -449,6 +481,10 @@ class Router
         return [];
     }
 
+    /**
+     * Full current path
+     * @return string
+     */
     public static function CurrentPath(): string
     {
         if(isset($GLOBALS['current-path']))
@@ -457,37 +493,11 @@ class Router
         }
         return "";
     }
+    #endregion
 
-    public static function URLify($arg): string
-    {
-        $tr = explode(" ", strtolower(trim($arg)));
+    
 
-        $ret = "";
-
-        for($i = 0; $i < count($tr); $i++)
-        {
-            if($ret == "")
-            {
-                $ret .= $tr[$i];
-            }
-            else
-            {
-                $ret .= "-". $tr[$i];
-            }
-        }
-        return $ret;
-    }
-
-    public function DataRoute(array $routes=[])
-    {
-        $this->dataRoute = $routes;
-    }
-
-    private function isValidMethod($method): bool
-    {
-        $pp = strtolower(trim($method));
-        return (($method == "post") || ($method == "get") || ($method == "put") || ($method == "patch") || ($method == "delete") || ($method == "option") || ($method == "head"));
-    }
+    #region private method
 
     private function showResourceNotFound()
     {
@@ -508,48 +518,10 @@ class Router
     }
 
     /**
-     * @param $route
-     * @param $current_url
-     * @return bool
-     * @comment used for regexing routes internally
+     * strip the data path from the request URL
+     * @param string $path
+     * @return string
      */
-    private function matchRoute($route, $current_url): bool
-    {
-        $r = explode("/", $route);
-        $c = explode("/", $current_url);
-
-        $this->routedArgs = [];
-
-        for($i = 0; $i < count($r); $i++)
-        {
-            if(count($c) > $i)
-            {
-                if(trim($r[$i]) == "{*}")
-                {
-                    return true;
-                }
-                else if(preg_match("/{.*?}/", $r[$i]))
-                {
-                    $this->routedArgs[trim($r[$i], "{}")] = $c[$i];
-                }
-                else if($r[$i] != $c[$i])
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        if(count($r) == count($c))
-        {
-            return true;
-        }
-        return false;
-    }
-
     private function stripDataPath(string $path)
     {
         $keys = array_keys($this->dataRoute);
@@ -571,6 +543,10 @@ class Router
         return trim($path, '/');
     }
 
+    /**
+     * build, prep & hydrate the request object to be injected into comtrollers, views, paths or closures
+     * @return Request
+     */
     private function buildRequest(): Request
     {
         $routedData = new FormData();
@@ -578,7 +554,7 @@ class Router
         $getData = new FormData();
         $jsonData = new FormData();
 
-        $routedData->Args = $this->routedArgs;
+        $routedData->args = $this->routedArgs;
 
 
         //retriever POST data
@@ -588,7 +564,7 @@ class Router
         {
             $postArgs[$keys[$i]] = $_POST[$keys[$i]];
         }
-        $postedData->Args = $postArgs;
+        $postedData->args = $postArgs;
 
 
         //retrieve GET data
@@ -598,7 +574,7 @@ class Router
         {
             $getArgs[$keys[$i]] = $_GET[$keys[$i]];
         }
-        $getData->Args = $getArgs;
+        $getData->args = $getArgs;
 
 
         // Read raw data from the php://input stream
@@ -638,15 +614,29 @@ class Router
             // Treat as plain text if no specific content type is provided
             $parsedData['raw'] = $inputData;
         }
-        $jsonData->Args = $parsedData;
+        $jsonData->args = $parsedData;
 
-        return new Request($this->getMethod(), $routedData, $getData, $postedData, $jsonData);
+        return new Request(Router::GetMethod(), $routedData, $getData, $postedData, $jsonData);
     }
 
-
-    private function getMethod(): HTTPMethod
+    /**
+     * check if a string is a valid HTTP method
+     * @param mixed $method
+     * @return bool
+     */
+    public static function IsValidMethod(string $method): bool
     {
-        $method = strtoupper((isset($_REQUEST['_method']) && $this->isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
+        $pp = strtolower(trim($method));
+        return (($method == "post") || ($method == "get") || ($method == "put") || ($method == "patch") || ($method == "delete") || ($method == "option") || ($method == "head"));
+    }
+
+    /**
+     * get the request method of the current request
+     * @return HTTPMethod
+     */
+    public static function GetMethod(): HTTPMethod
+    {
+        $method = strtoupper((isset($_REQUEST['_method']) && Router::isValidMethod($_REQUEST['_method'])) ? $_REQUEST['_method'] : $_SERVER['REQUEST_METHOD']);
 
         if(HTTPMethod::tryFrom($method))
         {
@@ -654,4 +644,5 @@ class Router
         }
         return HTTPMethod::ANY;
     }
+    #endregion
 }

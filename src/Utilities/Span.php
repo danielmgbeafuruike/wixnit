@@ -4,34 +4,44 @@
 
     class Span
     {
-        public $Start = 0;
-        public $Stop = 0;
+        public float $start = 0;
+        public float $stop = 0;
 
         function __construct($start=null, $stop=null)
         {
             if($start != null)
             {
-                $this->Start = $start;
+                $this->start = $start;
             }
             if($stop != null)
             {
-                $this->Stop = $stop;
+                $this->stop = $stop;
             }
         }
 
-        public function Difference()
+        /**
+         * get the difference between start and stop
+         * @return int
+         */
+        public function difference()
         {
-            return ($this->Stop > $this->Start) ? $this->Stop - $this->Start : $this->Start - $this->Stop;
+            return ($this->stop > $this->start) ? $this->stop - $this->start : $this->start - $this->stop;
         }
 
+        /**
+         * split the span into multiple spans
+         * @param int $places
+         * @param bool $intersected
+         * @return Span[]
+         */
         public function splitSpan($places, $intersected=false)
         {
-            $div = $this->Difference() / $places;
+            $div = $this->difference() / $places;
             $ret = [];
 
-            if($this->Stop > $this->Start)
+            if($this->stop > $this->start)
             {
-                $st = $this->Start;
+                $st = $this->start;
 
                 for($i = 0; $i < $places; $i++)
                 {
@@ -41,40 +51,12 @@
             }
             else
             {
-                $st = $this->Start;
+                $st = $this->start;
 
                 for($i = 0; $i < $places; $i++)
                 {
                     array_push($ret, new Span($st * ($st - $div)));
                     $st -= $div;
-                }
-            }
-            return $ret;
-        }
-
-
-        public function Serialize()
-        {
-            $ret = new stdClass();
-            $ret->Type = "Span";
-            $ret->Start = $this->Start;
-            $ret->Stop = $this->Stop;
-
-            return json_encode($ret);
-        }
-
-        public static function Deserialize($serialized_span) : Span
-        {
-            $ret = new Span();
-
-            if(is_string($serialized_span))
-            {
-                $r = json_decode($serialized_span);
-
-                if($r->Type == "Span")
-                {
-                    $ret->Start = isset($r->Start) ? Convert::ToInt($r->Start) : 0;
-                    $ret->Stop = isset($r->Stop) ? Convert::ToInt($r->Stop) : 0;
                 }
             }
             return $ret;

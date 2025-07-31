@@ -4,7 +4,7 @@
 
     class DBSQLPrep
     {
-        public string $Query = "";
-        public array $Types = [];
-        public array $Values = [];
+        public string $query = "";
+        public array $types = [];
+        public array $values = [];
     }
