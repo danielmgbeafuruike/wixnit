@@ -7,10 +7,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Wixnit\\": "src/",
-            "Controllers\\": "Controllers/",
-            "Guards\\": "Guards/",
-            "Models\\": "Models/"
+            "Wixnit\\": "src/"
         }
     },
     "authors": [

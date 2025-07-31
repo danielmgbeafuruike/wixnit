@@ -11,36 +11,12 @@ class ComposerStaticInit7429c28658bd2140a54805130d3e13af
         array (
             'Wixnit\\' => 7,
         ),
-        'M' => 
-        array (
-            'Models\\' => 7,
-        ),
-        'G' => 
-        array (
-            'Guards\\' => 7,
-        ),
-        'C' => 
-        array (
-            'Controllers\\' => 12,
-        ),
     );
 
     public static $prefixDirsPsr4 = array (
         'Wixnit\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
-        ),
-        'Models\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/Models',
-        ),
-        'Guards\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/Guards',
-        ),
-        'Controllers\\' => 
-        array (
-            0 => __DIR__ . '/../..' . '/Controllers',
         ),
     );
 
