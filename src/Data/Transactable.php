@@ -1449,7 +1449,7 @@
         /**
          * Get the number of rows retrieved by processing Filters, Searches etc.
          * @param mixed $conn
-         * @param array $
+         * @param mixed $
          * @return int
          */
         protected static function CountCollection($conn): int
@@ -1513,7 +1513,7 @@
         /**
          * Get the number of rows that's been deleted
          * @param mixed $conn
-         * @param array $
+         * @param mixed $
          * @return int
          */
         protected static function DeletedCount($conn): int
@@ -1577,7 +1577,7 @@
         /**
          * Delete a list of items by their object or id
          * @param mixed $conn
-         * @param array $
+         * @param mixed $
          * @return DBResult
          */
         protected static function QuickDelete($conn): DBResult
