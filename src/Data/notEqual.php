@@ -1,12 +1,12 @@
 <?php
 
     namespace Wixnit\Data;
-    class notEqual
+    class NotEqual
     {
-        public ?array $Value = null;
+        public ?array $value = null;
 
         function __construct()
         {
-            $this->Value = func_get_args();
+            $this->value = func_get_args();
         }
     }

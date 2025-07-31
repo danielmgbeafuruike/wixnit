@@ -2,33 +2,45 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\Enum\FilterOperation;
+
     class SearchBuilder
     {
-        public $searches = [];
-        protected int $operation = Filter::AND;
+        public array $searches = [];
+        protected FilterOperation $operation = FilterOperation::AND;
 
-        public function getQuery($fields=[]): DBSQLPrep
+        /**
+         * Process and retrieve the query for the search builder
+         * @param array $fields
+         * @return DBSQLPrep
+         */
+        public function getQuery(array $fields=[]): DBSQLPrep
         {
             $ret = new DBSQLPrep();
 
-            $ret->Query = "(";
+            $ret->query = "(";
             for($i = 0; $i < count($this->searches); $i++)
             {
                 $q = $this->searches[$i]->getQuery($fields);
 
-                $ret->Query.= ((trim($ret->Query) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : "").$q->Query;
+                $ret->query.= ((trim($ret->query) != "(") ? (($this->operation == FilterOperation::OR) ? " OR " : " AND ") : "").$q->query;
 
-                for($x = 0; $x < count($q->Types); $x++)
+                for($x = 0; $x < count($q->types); $x++)
                 {
-                    $ret->Values[] = $q->Values[$x];
-                    $ret->Types[] = $q->Types[$x];
+                    $ret->values[] = $q->values[$x];
+                    $ret->types[] = $q->types[$x];
                 }
             }
 
-            $ret->Query .= ")";
+            $ret->query .= ")";
             return $ret;
         }
 
+        /**
+         * Add new search term and all
+         * @param mixed $search
+         * @return void
+         */
         public function add($search)
         {
             if(($search instanceof Search) || ($search instanceof SearchBuilder))
@@ -37,23 +49,16 @@
             }
         }
 
+        /**
+         * Set the joining operation of the search builder
+         * @param mixed $operation
+         * @return void
+         */
         public function setOperation($operation)
         {
-            if(($operation == Filter::OR) || ($operation == Filter::AND))
+            if(($operation == FilterOperation::OR) || ($operation == FilterOperation::AND))
             {
                 $this->operation = $operation;
             }
-        }
-
-        public function Serialize()
-        {
-
-        }
-
-        public static function Deserialize($searches): SearchBuilder
-        {
-            $ret = new SearchBuilder();
-
-            return $ret;
         }
     }

@@ -2,12 +2,7 @@
 
     namespace Wixnit\Data;
 
-    class fieldName
+    class FieldName
     {
-        public string $Name = "";
-
-        function __construct(string $name)
-        {
-            $this->Name = $name;
-        }
+        function __construct(public string $name){}
     }

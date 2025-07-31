@@ -41,17 +41,21 @@
             }
         }
 
+
+
+        #region implementnig ISerializable functions
+
         /**
          * get db field type for creating the appropriate db field type for saving the class to db
          * @return DBFieldType
          */
         public function _dbType(): DBFieldType
         {
-            return DBFieldType::Int;
+            return DBFieldType::INT;
         }
 
         /**
-         * prepare the object for saving to the db
+         * prepare the object for saving to db
          * @return int
          */
         public function _serialize(): int
@@ -69,4 +73,5 @@
             $this->read = intval($data) === 1 || intval($data) === 2;
             $this->write = intval($data) === 1 || intval($data) === 3;
         }
+        #endregion
     }

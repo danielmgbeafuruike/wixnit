@@ -2,11 +2,13 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\Enum\DBJoin;
+    use Wixnit\Enum\FilterOperation;
+    use Wixnit\Enum\OrderDirection;
+    use Wixnit\Exception\DatabaseException;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
-    use Exception;
-    use mysqli;
 
     class DBQuery
     {
@@ -32,6 +34,12 @@
         private array $args = [];
         private string $argTypes = "";
 
+
+        /**
+         * @param DB $database
+         * @return DBQuery
+         * @comment will create a new DBQuery object with the database connection
+         */
         public static function With(DB $database): DBQuery
         {
             $ret = new DBQuery();
@@ -39,7 +47,12 @@
             return $ret;
         }
 
-        public function Search(): DBQuery
+        /**
+         * Run a search query
+         * @param array $
+         * @return DBQuery
+         */
+        public function search(): DBQuery
         {
             $args = func_get_args();
 
@@ -76,7 +89,12 @@
             return  $this;
         }
 
-        public function Where(): DBQuery
+        /**
+         * @param Filter|FilterBuilder|array|string|int ...$args
+         * @return DBQuery
+         * @comment will add a where clause to the query
+         */
+        public function where(): DBQuery
         {
             $args = func_get_args();
 
@@ -113,7 +131,12 @@
             return  $this;
         }
 
-        public function OrWhere(): DBQuery
+        /**
+         * @param Filter|FilterBuilder ...$args
+         * @return DBQuery
+         * @comment will add an OR where clause to the query
+         */
+        public function orWhere(): DBQuery
         {
             $args = func_get_args();
 
@@ -122,7 +145,7 @@
             {
                 if(is_string($args[0]))
                 {
-                    $this->operations[] = new Filter([$args[0]=>$args[1]], Filter::OR);
+                    $this->operations[] = new Filter([$args[0]=>$args[1]], FilterOperation::OR);
                     return  $this;
                 }
             }
@@ -134,7 +157,7 @@
 
                 for($i = 0; $i < count($keys); $i++)
                 {
-                    $this->operations[] = new Filter([$keys[$i]=>$args[0][$keys[$i]]], Filter::OR);
+                    $this->operations[] = new Filter([$keys[$i]=>$args[0][$keys[$i]]], FilterOperation::OR);
                 }
                 return  $this;
             }
@@ -144,18 +167,23 @@
             {
                 if($args[$i] instanceof Filter)
                 {
-                    $this->operations[] = Filter::Builder($args[$i], Filter::OR);
+                    $this->operations[] = Filter::Builder($args[$i], FilterOperation::OR);
                 }
                 else if($args[$i] instanceof  FilterBuilder)
                 {
-                    $args[$i]->setOperation(Filter::OR);
+                    $args[$i]->setOperation(FilterOperation::OR);
                     $this->operations[] = $args[$i];
                 }
             }
             return  $this;
         }
 
-        public function Limit($limit): DBQuery
+        /**
+         * @param int $limit
+         * @return DBQuery
+         * @comment will add a field to the query
+         */
+        public function limit(int $limit): DBQuery
         {
             if(is_int($limit))
             {
@@ -163,12 +191,17 @@
                 {
                     $this->pagination = new Pagination();
                 }
-                $this->pagination->Limit = $limit;
+                $this->pagination->limit = $limit;
             }
             return  $this;
         }
 
-        public function Offset($offset): DBQuery
+        /**
+         * @param int $offset
+         * @return DBQuery
+         * @comment will set the offset of the query
+         */
+        public function offset(int $offset): DBQuery
         {
             if(is_int($offset))
             {
@@ -176,12 +209,18 @@
                 {
                     $this->pagination = new Pagination();
                 }
-                $this->pagination->Offset = $offset;
+                $this->pagination->offset = $offset;
             }
             return  $this;
         }
 
-        public  function Order($order, $direction=null): DBQuery
+        /**
+         * @param string|Order $order
+         * @param OrderDirection|null $direction
+         * @return DBQuery
+         * @comment will set the order of the query
+         */
+        public  function order(Order $order, ?OrderDirection $direction=null): DBQuery
         {
             if($order instanceof Order)
             {
@@ -189,7 +228,7 @@
             }
             else if(is_string($order))
             {
-                if(($direction == Order::ASCENDING) || ($direction == Order::DESCENDING))
+                if(($direction == OrderDirection::ASCENDING) || ($direction == OrderDirection::DESCENDING))
                 {
                     $this->order = new Order($order, $direction);
                 }
@@ -201,23 +240,38 @@
             return  $this;
         }
 
-        public function Paginate(Pagination $pagination): DBQuery
+        /**
+         * @param Pagination $pagination
+         * @return DBQuery
+         * @comment use a pagination object to limit the query results
+         */
+        public function paginate(Pagination $pagination): DBQuery
         {
             $this->pagination = $pagination;
             return  $this;
         }
 
-        public function Distinct($field=null): DBQuery
+        /**
+         * @param DistinctOn $field
+         * @return DBQuery
+         * @comment will add a field to the distinct query
+         */
+        public function distinct(string $field=null): DBQuery
         {
             $this->distinct_on[] = $field;
             return  $this;
         }
 
-        public function GroupBy($field): DBQuery
+        /**
+         * @param string|FieldName $field
+         * @return DBQuery
+         * @comment will group the query by the field
+         */
+        public function groupBy($field): DBQuery
         {
             if($field instanceof groupBy)
             {
-                $this->group_by = $field->Value;
+                $this->group_by = $field->value;
             }
             else
             {
@@ -226,12 +280,21 @@
             return $this;
         }
 
-        public function Not(DBQuery $query): DBQuery
+        /**
+         * @param DBQuery $query
+         * @return DBQuery
+         * @comment will return the query that will be executed
+         */
+        public function not(DBQuery $query): DBQuery
         {
             return  $this;
         }
 
-        public function SQL()
+        /**
+         * @return string
+         * @comment will return the query that will be executed
+         */
+        public function sql(): string
         {
             $args = func_get_args();
 
@@ -248,7 +311,15 @@
             return  $this->query;
         }
 
-        public function Join($map_or_tableName, $left_table_id, $right_table_id, $join=DBJoin::Left): DBQuery
+        /**
+         * prepares all the table for joining
+         * @param ObjectMap|string $map_or_tableName
+         * @param string $left_table_id
+         * @param string $right_table_id
+         * @param DBJoin $join
+         * @return DBQuery
+         */
+        public function join($map_or_tableName, $left_table_id, $right_table_id, DBJoin $join=DBJoin::LEFT): DBQuery
         {
             $this->joins[] = [
               "join"=>$join,
@@ -263,7 +334,7 @@
          * @return void
          * @comment will delete rows based on the where and clauses that have been set
          */
-        public function Delete(): DBResult
+        public function delete(): DBResult
         {
             $ret = new DBResult();
 
@@ -290,6 +361,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
+                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
                 }
             }
             else
@@ -307,7 +379,7 @@
          * @return void
          * @comment will accept an array of data and prep it for inserting to be inserted
          */
-        public function Insert(array $data): DBResult
+        public function insert(array $data): DBResult
         {
             $ret = new DBResult();
 
@@ -325,13 +397,15 @@
 
                     $this->query = "INSERT INTO ".$this->db->tableName." (".$prep['fields'].") VALUES (".$prep["placeholder"]." )";
 
+                    //die($this->query);
+
                     $operation = $this->db->db->prepare($this->query);
                     $operation->bind_param($this->argTypes, ...$this->args);
 
                     if($operation->execute())
                     {
                         $result = $operation->get_result();
-                        $ret->Count = $operation->num_rows();
+                        $ret->count = $operation->num_rows();
 
                         //close the connection
                         //$this->db->db->close();
@@ -340,6 +414,7 @@
                     else
                     {
                         //throw (new Exception($operation->get_warnings()));
+                        throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
                     }
                 }
             }
@@ -350,7 +425,7 @@
          * @param array $data
          * @return void
          */
-        public function Update(array $data): DBResult
+        public function update(array $data): DBResult
         {
             if(count(array_keys($data)) > 0)
             {
@@ -368,7 +443,7 @@
                 if($operation->execute())
                 {
                     $result = $operation->get_result();
-                    $ret->Count = $operation->num_rows();
+                    $ret->count = $operation->num_rows();
 
                     //close the connection
                     //$this->db->db->close();
@@ -377,11 +452,21 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
+                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
                 }
+            }
+            else
+            {
+                throw(DatabaseException::InvalidDatabaseQueryParameter(json_encode($data)));
             }
         }
 
-        public function Get(): DBResult
+        /**
+         * Execute retrieval query
+         * @param array $
+         * @return DBResult
+         */
+        public function get(): DBResult
         {
             $args = func_get_args();
 
@@ -426,7 +511,7 @@
                 if($operation->execute())
                 {
                     $result = $operation->get_result();
-                    $ret->Data = $result->fetch_all(MYSQLI_ASSOC);
+                    $ret->data = $result->fetch_all(MYSQLI_ASSOC);
 
                     if($this->pagination != null)
                     {
@@ -444,24 +529,24 @@
                             }*/
                             if($this->group_by != "")
                             {
-                                $ret->Count = $result->num_rows;
+                                $ret->count = $result->num_rows;
                             }
                             else
                             {
-                                $ret->Count = $result->fetch_array()[0];
+                                $ret->count = $result->fetch_array()[0];
                             }
 
-                            $ret->Start = (($this->pagination->Offset + 1) > 0) ? ($this->pagination->Offset + 1) : 1;
-                            $ret->Stop = ($this->pagination->Offset + $this->pagination->Limit);
+                            $ret->start = (($this->pagination->offset + 1) > 0) ? ($this->pagination->offset + 1) : 1;
+                            $ret->stop = ($this->pagination->offset + $this->pagination->limit);
                         }
                         else
                         {
-                            $ret->Count = $result->num_rows;
+                            $ret->count = $result->num_rows;
                         }
                     }
                     else
                     {
-                        $ret->Count = $result->num_rows;
+                        $ret->count = $result->num_rows;
                     }
                     
 
@@ -472,25 +557,26 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
+                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
                 }
             }
             else
             {
                 $res = $this->db->db->query($this->query);
 
-                $ret->Data = $res->fetch_all(MYSQLI_ASSOC);
+                $ret->data = $res->fetch_all(MYSQLI_ASSOC);
 
                 if($this->pagination != null)
                 {
                     $res = $this->db->db->query($countQuery);
-                    $ret->Count = $res->fetch_array()[0];
+                    $ret->count = $res->fetch_array()[0];
 
-                    $ret->Start = (($this->pagination->Offset + 1) > 0) ? ($this->pagination->Offset + 1) : 1;
-                    $ret->Stop = ($this->pagination->Offset + $this->pagination->Limit);
+                    $ret->start = (($this->pagination->offset + 1) > 0) ? ($this->pagination->offset + 1) : 1;
+                    $ret->stop = ($this->pagination->offset + $this->pagination->limit);
                 }
                 else
                 {
-                    $ret->Count = $res->num_rows;
+                    $ret->count = $res->num_rows;
                 }
 
                 //close the connection
@@ -500,7 +586,12 @@
             }
         }
 
-        public function Count(): int
+        /**
+         * Execute row counting query
+         * @param array $
+         * @return int
+         */
+        public function count(): int
         {
             $args = func_get_args();
 
@@ -533,6 +624,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
+                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
                 }
             }
             else
@@ -548,8 +640,14 @@
         }
 
 
-        //privately used methods
-        private function executeOperations()
+        #region privately used methods
+
+        /**
+         * Prepares the query and returns the fields and placeholders
+         * @param array $data
+         * @return array
+         */
+        private function executeOperations(): void
         {
             $conditionals = "";
 
@@ -572,7 +670,7 @@
                 {
                     if(trim($createdFilter) == "")
                     {
-                        $range = new Range(new Span($this->operations[$i]->Start, $this->operations[$i]->Stop));
+                        $range = new Range(new Span($this->operations[$i]->start, $this->operations[$i]->stop));
 
                         if(count($this->joins) > 0)
                         {
@@ -585,25 +683,25 @@
 
                         $timeSpanTypes .= "ii";
 
-                        $timeSpanArgs[] = $range->Start;
-                        $timeSpanArgs[] = $range->Stop;
+                        $timeSpanArgs[] = $range->start;
+                        $timeSpanArgs[] = $range->stop;
                     }
                 }
                 else if(($this->operations[$i] instanceof Search) || ($this->operations[$i] instanceof SearchBuilder))
                 {
                     $sP = $this->preprocessOp($this->operations[$i])->getQuery();
-                    $search .= ((trim($search) != "") ? " AND " : "").$sP->Query;
+                    $search .= ((trim($search) != "") ? " AND " : "").$sP->query;
 
-                    $searchArgs = array_merge($searchArgs, $sP->Values);
-                    $searchTypes .= implode("", $sP->Types);
+                    $searchArgs = array_merge($searchArgs, $sP->values);
+                    $searchTypes .= implode("", $sP->types);
                 }
                 else if(($this->operations[$i] instanceof Filter) || ($this->operations[$i] instanceof FilterBuilder))
                 {
                     $fP = $this->preprocessOp($this->operations[$i])->getQuery();
-                    $filter .= ((trim($filter) != "") ? " AND " : "").$fP->Query;
+                    $filter .= ((trim($filter) != "") ? " AND " : "").$fP->query;
 
-                    $filterArgs = array_merge($filterArgs, $fP->Values);
-                    $filterTypes .= implode("", $fP->Types);
+                    $filterArgs = array_merge($filterArgs, $fP->values);
+                    $filterTypes .= implode("", $fP->types);
                 }
             }
 
@@ -617,6 +715,10 @@
                 $this->argTypes .= $filterTypes.$searchTypes.$timeSpanTypes;
         }
 
+        /**
+         * create the joining for all the table
+         * @return void
+         */
         private function executeJoins()
         {
             $this->joined_tables = [];
@@ -649,6 +751,10 @@
             }
         }
 
+        /**
+         * prepare iimit and orders
+         * @return void
+         */
         private function executeLimitsAndOrder()
         {
             $spanArgs = [];
@@ -662,17 +768,17 @@
             {
                 if(trim($pagination) == "")
                 {
-                    $pagination = (($this->pagination->Limit != null) && ($this->pagination->Limit != 0) ? " LIMIT ? " : "").
-                        (($this->pagination->Offset != null) && ($this->pagination->Offset != 0) ? "OFFSET ? " : "");
+                    $pagination = (($this->pagination->limit != null) && ($this->pagination->limit != 0) ? " LIMIT ? " : "").
+                        (($this->pagination->offset != null) && ($this->pagination->offset != 0) ? "OFFSET ? " : "");
 
-                    if(($this->pagination->Limit != null) && ($this->pagination->Limit != 0))
+                    if(($this->pagination->limit != null) && ($this->pagination->limit != 0))
                     {
-                        $spanArgs[] = $this->pagination->Limit;
+                        $spanArgs[] = $this->pagination->limit;
                         $spanTypes .= "i";
                     }
-                    if(($this->pagination->Offset != null) && ($this->pagination->Offset != 0))
+                    if(($this->pagination->offset != null) && ($this->pagination->offset != 0))
                     {
-                        $spanArgs[] = $this->pagination->Offset;
+                        $spanArgs[] = $this->pagination->offset;
                         $spanTypes .= "i";
                     }
                 }
@@ -682,11 +788,11 @@
                 if(trim($order) == "")
                 {
                     //preprocess fields name in case of table joins
-                    $jPrep = explode(".", $this->order->Field);
+                    $jPrep = explode(".", $this->order->field);
 
                     if((count($this->joins) > 0) && ((count($jPrep) < 2) || (($jPrep[0] != $this->db->tableName) && (!in_array($jPrep[0], $this->joined_tables)))))
                     {
-                        $this->order->Field = $this->db->tableName.".".$this->order->Field;
+                        $this->order->Field = $this->db->tableName.".".$this->order->field;
                     }
                     $order = $this->order->getQuery();
                 }
@@ -698,6 +804,10 @@
             $this->argTypes .= $spanTypes;
         }
 
+        /**
+         * Summary of buildFieldSelection
+         * @return string
+         */
         private function buildFieldSelection(): string
         {
             $ret = "";
@@ -744,6 +854,11 @@
             return  trim(trim($ret != "" ? $ret : "*"), ',')." ";
         }
 
+        /**
+         * prepares the insert query and returns the fields and placeholders
+         * @param array $data
+         * @return array{fields: string, placeholder: string}
+         */
         private function prepInsert(array $data): array
         {
             $keys = array_keys($data);
@@ -764,6 +879,11 @@
             return $ret;
         }
 
+        /**
+         * prepares the update query and returns the fields and placeholders
+         * @param array $data
+         * @return string
+         */
         private function prepUpdate(array $data): string
         {
             $keys = array_keys($data);
@@ -780,7 +900,12 @@
             return $ret;
         }
 
-        private function preprocessOp($op)
+        /**
+         * Preprocesses the operation to ensure that the fields are properly formatted
+         * @param Filter|FilterBuilder|Search|SearchBuilder $op
+         * @return Filter|FilterBuilder|Search|SearchBuilder
+         */
+        private function preProcessOp($op)
         {
             if(count($this->joins) > 0)
             {
@@ -830,6 +955,10 @@
             }
         }
 
+        /**
+         * Prepares the distinct clause
+         * @return string
+         */
         private function prepDistinct()
         {
             $ret = "";
@@ -848,6 +977,10 @@
             return $ret;
         }
 
+        /**
+         * Prepares the group by clause
+         * @return void
+         */
         private function prepGroupBy()
         {
             if($this->group_by != "")
@@ -855,4 +988,5 @@
                 $this->query .= " GROUP BY ".$this->db->tableName.".".$this->group_by." ";
             }
         }
+        #endregion
     }

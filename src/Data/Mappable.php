@@ -8,27 +8,31 @@
 
     abstract class Mappable
     {
-        protected array $Excludes = [];
-        protected array $Includes = [];
-        protected array $PropertyTypes = [];
-        protected array $MappingIndex = [];
-        protected array $Hidden = [];
-        protected array $HiddenProperties = [];
+        protected array $excludes = [];
+        protected array $includes = [];
+        protected array $propertyTypes = [];
+        protected array $mappingIndex = [];
+        protected array $hidden = [];
+        protected array $hiddenProperties = [];
 
 
         function __construct()
         {
             //first order of business create hidden fields
-            for($i = 0; $i < count($this->Hidden); $i++)
+            for($i = 0; $i < count($this->hidden); $i++)
             {
-                $this->HiddenProperties[$this->Hidden[$i]] = null;
+                $this->hiddenProperties[$this->hidden[$i]] = null;
             }
         }
 
-        public function GetMap(): ObjectMap
+        /**
+         * Get the map of the object
+         * @return ObjectMap
+         */
+        public function getMap(): ObjectMap
         {
             $ret = new ObjectMap();
-            $ret->Name = get_called_class();
+            $ret->name = get_called_class();
 
             //get everything using reflection
             $reflection = new ReflectionClass($this);
@@ -39,72 +43,77 @@
                 if(($props[$i]->getModifiers() == 1) && (!$this->isExcluded($props[$i]->getName())))
                 {
                     $prop = new ObjectProperty();
-                    $prop->Name = $props[$i]->getName();
-                    $prop->baseName = strtolower($this->mappedName($prop->Name));
+                    $prop->name = $props[$i]->getName();
+                    $prop->baseName = strtolower($this->mappedName($prop->name));
 
                     if($props[$i]->getType() != null)
                     {
-                        $prop->Type = $props[$i]->getType()->getName();
+                        $prop->type = $props[$i]->getType()->getName();
 
-                        if($prop->Type == "array")
+                        if($prop->type == "array")
                         {
-                            $prop->IsArray = true;
-                            $pType = $this->getProposedType($prop->Name);
+                            $prop->isArray = true;
+                            $pType = $this->getProposedType($prop->name);
 
                             if($pType != null)
                             {
-                                $prop->Type = $pType;
+                                $prop->type = $pType;
                             }
                         }
                     }
                     else
                     {
-                        $prop->Type = strtolower(gettype($props[$i]->getValue($this)));
+                        $prop->type = strtolower(gettype($props[$i]->getValue($this)));
 
-                        if(($prop->Type == "array") || ($prop->Type == "null"))
+                        if(($prop->type == "array") || ($prop->type == "null"))
                         {
-                            $prop->IsArray = true;
-                            $pType = $this->getProposedType($prop->Name);
+                            $prop->isArray = true;
+                            $pType = $this->getProposedType($prop->name);
 
                             if($pType != null)
                             {
-                                $prop->Type = $pType;
+                                $prop->type = $pType;
                             }
                         }
                     }
-                    $ret->PublicProperties[] = $prop;
+                    $ret->publicProperties[] = $prop;
                 }
             }
 
             //add hidden fields
-            $hiddenKeys = array_keys($this->HiddenProperties);
+            $hiddenKeys = array_keys($this->hiddenProperties);
 
             for($i = 0; $i < count($hiddenKeys); $i++)
             {
                 if (!$this->isExcluded($props[$i]->getName()))
                 {
                     $prop = new ObjectProperty();
-                    $prop->Name = $hiddenKeys[$i];
-                    $prop->baseName = strtolower($this->mappedName($prop->Name));
+                    $prop->name = $hiddenKeys[$i];
+                    $prop->baseName = strtolower($this->mappedName($prop->name));
 
                     $pType = $this->getProposedType($hiddenKeys[$i]);
 
                     if($pType != null)
                     {
-                        $prop->Type = $pType;
+                        $prop->type = $pType;
                     }
 
                     //check if array was chosen as hidden type
-                    if($prop->Type == "array")
+                    if($prop->type == "array")
                     {
-                        $prop->IsArray = true;
+                        $prop->isArray = true;
                     }
-                    $ret->HiddenProperties[] = $prop;
+                    $ret->hiddenProperties[] = $prop;
                 }
             }
             return $ret;
         }
 
+        /**
+         * Map the object to an ObjectMap
+         * @param $object
+         * @return ObjectMap
+         */
         protected static function MapObject($object): ObjectMap
         {
             $reflection = is_object($object) ? new ReflectionObject($object) : new ReflectionClass($object);
@@ -133,23 +142,107 @@
                     {
                         $prop->Type = null;
                     }
-                    $ret->PublicProperties[] = $prop;
+                    $ret->publicProperties[] = $prop;
                 }
             }
             return $ret;
         }
 
-        public function mapFrom($array_object, bool $map_hidden=true)
+        /*
+        public static function MapObject($object): ObjectMap
+        {
+            $reflection = is_object($object) ? new ReflectionObject($object) : new ReflectionClass($object);
+            $ret = new ObjectMap();
+            $ret->name = $reflection->getShortName();
+            
+            $props = $reflection->getProperties();
+
+            for($i = 0; $i < count($props); $i++)
+            {
+                if($props[$i]->getModifiers() == 1)
+                {
+                    $prop = new ObjectProperty();
+                    $prop->name = $props[$i]->getName();
+                    $prop->baseName = strtolower($this->mappedName($prop->name));
+
+                    if($props[$i]->getType() != null)
+                    {
+                        $prop->type = $props[$i]->getType()->getName();
+
+                        if($prop->type == "array")
+                        {
+                            $prop->isArray = true;
+                            $pType = $this->getProposedType($prop->name);
+
+                            if($pType != null)
+                            {
+                                $prop->type = $pType;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        $prop->type = strtolower(gettype($props[$i]->getValue($object)));
+                        if(($prop->type == "array") || ($prop->type == "null"))
+                        {
+                            $prop->isArray = true;
+                            $pType = $this->getProposedType($prop->name);
+
+                            if($pType != null)
+                            {
+                                $prop->type = $pType;
+                            }
+                        }
+                    }
+                    $ret->publicProperties[] = $prop;
+                }
+            }
+            //add hidden fields
+            $hiddenKeys = array_keys($this->hiddenProperties);
+            for($i = 0; $i < count($hiddenKeys); $i++)
+            {
+                if (!$this->isExcluded($props[$i]->getName()))
+                {
+                    $prop = new ObjectProperty();
+                    $prop->name = $hiddenKeys[$i];
+                    $prop->baseName = strtolower($this->mappedName($prop->name));
+
+                    $pType = $this->getProposedType($hiddenKeys[$i]);
+
+                    if($pType != null)
+                    {
+                        $prop->type = $pType;
+                    }
+
+                    //check if array was chosen as hidden type
+                    if($prop->type == "array")
+                    {
+                        $prop->isArray = true;
+                    }
+                    $ret->hiddenProperties[] = $prop;
+                }
+            }
+            return $ret;
+        }
+        */
+
+        /**
+         * Populate the object from an associative array or stdClass
+         * @param mixed $array_object
+         * @param bool $map_hidden
+         * @return void
+         */
+        public function mapFrom($array_object, bool $map_hidden=true): void
         {
             $properties = $this->GetMap();
 
 
             if(is_array($array_object))
             {
-                for($i = 0; $i < count($properties->PublicProperties); $i++)
+                for($i = 0; $i < count($properties->publicProperties); $i++)
                 {
-                    $fieldName = $properties->PublicProperties[$i]->Name;
-                    $fieldName_ = strtolower($properties->PublicProperties[$i]->Name);
+                    $fieldName = $properties->publicProperties[$i]->name;
+                    $fieldName_ = strtolower($properties->publicProperties[$i]->name);
 
                     if(array_key_exists($fieldName, $array_object))
                     {
@@ -163,10 +256,10 @@
             }
             else
             {
-                for($i = 0; $i < count($properties->PublicProperties); $i++)
+                for($i = 0; $i < count($properties->publicProperties); $i++)
                 {
-                    $fieldName = $properties->PublicProperties[$i]->Name;
-                    $fieldName_ = strtolower($properties->PublicProperties[$i]->Name);
+                    $fieldName = $properties->publicProperties[$i]->name;
+                    $fieldName_ = strtolower($properties->publicProperties[$i]->name);
 
                     if(isset($array_object->$fieldName))
                     {
@@ -181,7 +274,7 @@
 
             if($map_hidden)
             {
-                $hiddenKeys = array_keys($this->HiddenProperties);
+                $hiddenKeys = array_keys($properties->hiddenProperties);
 
                 if(is_array($array_object))
                 {
@@ -192,41 +285,41 @@
 
                         if(array_key_exists($fieldName, $array_object))
                         {
-                            $this->HiddenProperties[$fieldName] = $array_object[$fieldName];
+                            $this->hiddenProperties[$fieldName] = $array_object[$fieldName];
                         }
                         else if(array_key_exists($fieldName_, $array_object))
                         {
-                            $this->HiddenProperties[$fieldName] = $array_object[$fieldName_];
+                            $this->hiddenProperties[$fieldName] = $array_object[$fieldName_];
                         }
                     }
                 }
                 else
                 {
-                    for($i = 0; $i < count($properties->PublicProperties); $i++)
+                    for($i = 0; $i < count($properties->hiddenProperties); $i++)
                     {
-                        $fieldName = $properties->PublicProperties[$i]->Name;
-                        $fieldName_ = strtolower($properties->PublicProperties[$i]->Name);
+                        $fieldName = $properties->hiddenProperties[$i]->name;
+                        $fieldName_ = strtolower($properties->hiddenProperties[$i]->name);
 
-                        if(isset($array_object->$fieldName))
+                        if($array_object->getProperty($fieldName) != null)
                         {
-                            $this->HiddenProperties[$fieldName] = $array_object->$fieldName;
+                            $this->hiddenProperties[$fieldName] = $array_object->getProperty($fieldName);
                         }
-                        else if(isset($array_object->$fieldName_))
+                        else if($array_object->getProperty($fieldName_) != null)
                         {
-                            $this->HiddenProperties[$fieldName] = $array_object->$fieldName_;
+                            $this->hiddenProperties[$fieldName] = $array_object->getProperty($fieldName_);
                         }
                     }
                 }
             }
         }
 
-        public function Clone($object)
+        public function clone($object): void
         {
-            $properties = $this->GetMap();
+            $properties = $this->getMap();
 
-            for($i = 0; $i < count($properties->PublicProperties); $i++)
+            for($i = 0; $i < count($properties->publicProperties); $i++)
             {
-                $fieldName = $properties->PublicProperties[$i]->Name;
+                $fieldName = $properties->publicProperties[$i]->name;
 
                 if(isset($object->$fieldName))
                 {
@@ -236,28 +329,28 @@
 
             if($object instanceof Mappable)
             {
-                $this->HiddenProperties = $object->HiddenProperties;
+                $this->hiddenProperties = $object->hiddenProperties;
 
-                $this->Excludes = $object->Excludes;
-                $this->Includes = $object->Includes;
-                $this->PropertyTypes = $object->PropertyTypes;
-                $this->MappingIndex = $object->MappingIndex;
-                $this->Hidden = $object->Hidden;
+                $this->excludes = $object->excludes;
+                $this->includes = $object->includes;
+                $this->propertyTypes = $object->propertyTypes;
+                $this->mappingIndex = $object->mappingIndex;
+                $this->hidden = $object->hidden;
             }
         }
 
-        public function toSTDClass(bool $includeHiddenFields=false): stdClass
+        public function toSTDClass(bool $includehiddenFields=false): stdClass
         {
             $obj = json_decode(json_encode($this));
 
-            if($includeHiddenFields)
+            if($includehiddenFields)
             {
-                $hidden = array_keys($this->HiddenProperties);
+                $hidden = array_keys($this->hiddenProperties);
 
                 for($i = 0; $i < count($hidden); $i++)
                 {
                     $fName = $hidden[$i];
-                    $obj->$fName = $this->HiddenProperties[$hidden[$i]];
+                    $obj->$fName = $this->hiddenProperties[$hidden[$i]];
                 }
             }
             return $obj;
@@ -271,9 +364,9 @@
          */
         protected function setProperty($propertyName, $value)
         {
-            if(array_key_exists($propertyName, $this->HiddenProperties))
+            if(array_key_exists($propertyName, $this->hiddenProperties))
             {
-                $this->HiddenProperties[$propertyName] = $value;
+                $this->hiddenProperties[$propertyName] = $value;
             }
             else if(property_exists($this, $this->$propertyName))
             {
@@ -288,9 +381,9 @@
          */
         protected function getProperty($propertyName)
         {
-            if(array_key_exists($propertyName, $this->HiddenProperties))
+            if(array_key_exists($propertyName, $this->hiddenProperties))
             {
-                return $this->HiddenProperties[$propertyName];
+                return $this->hiddenProperties[$propertyName];
             }
             return $this->$propertyName;
         }
@@ -298,38 +391,58 @@
         //All the private methods that do the background work
         private function getProposedType($property_name): ?string
         {
-            return $this->PropertyTypes[$property_name] ?? ($this->PropertyTypes[strtolower($property_name)] ??  null);
+            return $this->propertyTypes[$property_name] ?? ($this->propertyTypes[strtolower($property_name)] ??  null);
         }
 
+        /**
+         * Get all the methods of the class
+         * @return array
+         */
         protected function getMethods(): array
         {
             $reflection = new ReflectionClass($this);
             return $reflection->getMethods();
         }
 
+        /**
+         * Check if a property is excluded from the mapping
+         * @param string $propertyName
+         * @return bool
+         */
         protected function isExcluded(string $propertyName) : bool
         {
-            if(in_array(strtolower($propertyName), $this->Excludes) || (in_array($propertyName, $this->Excludes)))
+            if(in_array(strtolower($propertyName), $this->excludes) || (in_array($propertyName, $this->excludes)))
             {
                 return true;
             }
             return false;
         }
 
+        /**
+         * @param string $originalName
+         * @return string
+         * @comment get the mapped name of a property, if not set return the original name
+         */
         protected function mappedName(string $originalName)
         {
-            if((isset($this->MappingIndex[$originalName])) || (isset($this->MappingIndex[strtolower($originalName)])))
+            if((isset($this->mappingIndex[$originalName])) || (isset($this->mappingIndex[strtolower($originalName)])))
             {
-                return $this->MappingIndex[$originalName] ?? $this->MappingIndex[strtolower($originalName)];
+                return $this->mappingIndex[$originalName] ?? $this->mappingIndex[strtolower($originalName)];
             }
             return $originalName;
         }
 
-        protected function mappedType(string $propertyName, $defaultType)
+        /**
+         * @param string $propertyName
+         * @param mixed $defaultType
+         * @return mixed
+         * @comment get the type of a property, if not set return the default type
+         */
+        protected function mappedType(string $propertyName, $defaultType): mixed
         {
-            if((isset($this->PropertyTypes[$propertyName])) || (isset($this->PropertyTypes[strtolower($propertyName)])))
+            if((isset($this->propertyTypes[$propertyName])) || (isset($this->propertyTypes[strtolower($propertyName)])))
             {
-                return $this->PropertyTypes[$propertyName] ?? $this->PropertyTypes[strtolower($propertyName)];
+                return $this->propertyTypes[$propertyName] ?? $this->propertyTypes[strtolower($propertyName)];
             }
             return $defaultType;
         }

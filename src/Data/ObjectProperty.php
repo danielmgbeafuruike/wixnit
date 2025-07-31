@@ -4,12 +4,12 @@
 
     class ObjectProperty
     {
-        public string $Name = "";
-        public string $Type = "null";
+        public string $name = "";
+        public string $type = "null";
         public string $baseName = "";
-        public bool $IsArray = false;
-        public bool $IsUnique = false;
-        public bool $IsLong = false;
-        public object $Value;
-        public bool $IsHidden = false;
+        public bool $isArray = false;
+        public bool $isUnique = false;
+        public bool $isLong = false;
+        public object $value;
+        public bool $isHidden = false;
     }

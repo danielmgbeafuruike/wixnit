@@ -3,14 +3,15 @@
     namespace Wixnit\Data;
 
     use mysqli;
+    use Wixnit\Enum\DBFieldType;
 
-    class DBMapper
+    class dbMapper
     {
-        private mysqli $DB;
+        private mysqli $db;
 
         function __construct(mysqli $db)
         {
-            $this->DB = $db;
+            $this->db = $db;
         }
 
         /**
@@ -21,23 +22,23 @@
         public function fromTable(string $tablename) : DBTable
         {
             $ret = new DBTable();
-            $ret->Name = $tablename;
+            $ret->name = $tablename;
 
-            $row = $this->DB->query("show columns from ".$tablename.";");
+            $row = $this->db->query("show columns from ".$tablename.";");
 
             while(($t = $row->fetch_object()) != null)
             {
                 $field = new DBTableField();
-                $field->Name = $t->Field;
-                $field->Default = $t->Default;
-                $field->AutoIncrement = $t->Extra == "auto_increment";
-                $field->IsPrimary = strtolower($t->Key) == "pri";
-                $field->Type = $this->ripType($t->Type);
-                $field->IsUnique = strtolower($t->Key) == "uni";
-                $field->IsNull = !(strtolower($t->Null) == "no");
-                $field->IsIndex = strtolower($t->Key == "mul");
+                $field->name = $t->Field;
+                $field->default = $t->Default;
+                $field->autoIncrement = $t->Extra == "auto_increment";
+                $field->isPrimary = strtolower($t->Key) == "pri";
+                $field->type = $this->ripType($t->Type);
+                $field->isUnique = strtolower($t->Key) == "uni";
+                $field->isNull = !(strtolower($t->Null) == "no");
+                $field->isIndex = strtolower($t->Key) == "mul";
 
-                $ret->AddField($field);
+                $ret->addField($field);
             }
             return  $ret;
         }
@@ -49,94 +50,94 @@
          */
         public function toTable(DBTable $tableImage)
         {
-            if($this->tableExists($tableImage->Name))
+            if($this->tableExists($tableImage->name))
             {
-                $currentImage = $this->fromTable($tableImage->Name);
+                $currentImage = $this->fromTable($tableImage->name);
 
                 //first do the renaming
-                for($i = 0; $i < count($currentImage->Fields); $i++)
+                for($i = 0; $i < count($currentImage->fields); $i++)
                 {
-                    for($j = 0; $j < count($tableImage->ColumnSwitches); $j++)
+                    for($j = 0; $j < count($tableImage->columnSwitches); $j++)
                     {
-                        if($currentImage->Fields[$i]->Name == $tableImage->ColumnSwitches[$j]['old'])
+                        if($currentImage->fields[$i]->name == $tableImage->columnSwitches[$j]['old'])
                         {
-                            $this->renameColumn($currentImage->Name, $currentImage->Fields[$i], $tableImage->ColumnSwitches[$j]['new']);
+                            $this->renameColumn($currentImage->name, $currentImage->fields[$i], $tableImage->columnSwitches[$j]['new']);
                             break;
                         }
                     }
                 }
 
                 //compare field types and adjust em
-                $testImage = $this->fromTable($tableImage->Name);
-                for($i = 0; $i < count($tableImage->Fields); $i++)
+                $testImage = $this->fromTable($tableImage->name);
+                for($i = 0; $i < count($tableImage->fields); $i++)
                 {
-                    if($testImage->HasField($tableImage->Fields[$i]->Name))
+                    if($testImage->HasField($tableImage->fields[$i]->name))
                     {
-                        $f = $testImage->getField($tableImage->Fields[$i]->Name);
+                        $f = $testImage->getField($tableImage->fields[$i]->name);
 
                         //compare their types
-                        if($f->Type != $tableImage->Fields[$i]->Type)
+                        if($f->type != $tableImage->fields[$i]->type)
                         {
-                            $this->changeColumnType($tableImage->Name, $tableImage->Fields[$i]->Name, $tableImage->Fields[$i]->getDBType());
+                            $this->changeColumnType($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->getdbType());
                         }
 
                         //check for unique keys
-                        if($f->IsUnique != $tableImage->Fields[$i]->IsUnique)
+                        if($f->isUnique != $tableImage->fields[$i]->isUnique)
                         {
-                            if($tableImage->Fields[$i]->IsUnique)
+                            if($tableImage->fields[$i]->isUnique)
                             {
-                                $this->addUniqueIndex($tableImage->Name, $tableImage->Fields[$i]->Name);
+                                $this->addUniqueIndex($tableImage->name, $tableImage->fields[$i]->name);
                             }
                             else
                             {
-                                $this->removeUniqueIndex($tableImage->Name, $tableImage->Fields[$i]->Name);
+                                $this->removeUniqueIndex($tableImage->name, $tableImage->fields[$i]->name);
                             }
                         }
 
                         //check auto incrementing field
-                        if($f->AutoIncrement != $tableImage->Fields[$i]->AutoIncrement)
+                        if($f->autoIncrement != $tableImage->fields[$i]->autoIncrement)
                         {
-                            if($tableImage->Fields[$i]->AutoIncrement)
+                            if($tableImage->fields[$i]->autoIncrement)
                             {
-                                $this->setAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name);
+                                $this->setAutoIncrement($tableImage->name, $tableImage->fields[$i]->name);
                             }
                             else
                             {
-                                $this->removeAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name, $tableImage->Fields[$i]->Type);
+                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type);
                             }
                         }
 
                         //check primary key field
-                        if($f->IsPrimary != $tableImage->Fields[$i]->IsPrimary)
+                        if($f->isPrimary != $tableImage->fields[$i]->isPrimary)
                         {
-                            if($tableImage->Fields[$i]->IsPrimary)
+                            if($tableImage->fields[$i]->isPrimary)
                             {
-                                $this->setPrimaryKey($tableImage->Name, $tableImage->Fields[$i]->Name);
+                                $this->setPrimaryKey($tableImage->name, $tableImage->fields[$i]->name);
                             }
                             else
                             {
-                                $this->removeAutoIncrement($tableImage->Name, $tableImage->Fields[$i]->Name, $tableImage->Fields[$i]->Type);
-                                //$this->removePrimaryKey($tableImage->Name);
+                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type);
+                                //$this->removePrimaryKey($tableImage->name);
                             }
                         }
                     }
                 }
 
                 //check and add the new fields
-                for($i = 0; $i < count($tableImage->Fields); $i++)
+                for($i = 0; $i < count($tableImage->fields); $i++)
                 {
-                    if(!$currentImage->HasField($tableImage->Fields[$i]->Name))
+                    if(!$currentImage->HasField($tableImage->fields[$i]->name))
                     {
-                        $this->createColumn($tableImage->Name, $tableImage->Fields[$i]);
+                        $this->createColumn($tableImage->name, $tableImage->fields[$i]);
                     }
                 }
 
                 //remove deprecated fields from the table
-                for($i = 0; $i < count($currentImage->Fields); $i++)
+                for($i = 0; $i < count($currentImage->fields); $i++)
                 {
-                    if(!$tableImage->HasField($currentImage->Fields[$i]->Name))
+                    if(!$tableImage->HasField($currentImage->fields[$i]->name))
                     {
-                        $this->dropColumn($currentImage->Name, $currentImage->Fields[$i]->Name);
+                        $this->dropColumn($currentImage->name, $currentImage->fields[$i]->name);
                     }
                 }
             }
@@ -149,28 +150,28 @@
         /**
          * @param string $tableName
          * @return bool
-         * @comment check if table exists on the connected DB
+         * @comment check if table exists on the connected db
          */
         public  function tableExists(string $tableName) : bool
         {
-            //$v =  $this->DB->query("SELECT 1 FROM ".$tableName." LIMIT 1");
+            //$v =  $this->db->query("SELECT 1 FROM ".$tableName." LIMIT 1");
             //return ($v != false);
 
-            //$v = $this->DB->query("SELECT count((1)) as `ct` FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='$tableName'");
+            //$v = $this->db->query("SELECT count((1)) as `ct` FROM INFORMATION_SCHEMA.TABLES WHERE table_schema='$tableName'");
             //return $v->fetch_array()[0] > 0;
 
-            $v = $this->DB->query("SHOW TABLES LIKE '$tableName'");
+            $v = $this->db->query("SHOW TABLES LIKE '$tableName'");
             return $v->num_rows > 0;
         }
 
         /**
          * @param string $tableName
          * @return void
-         * @comment drop a table on the connected DB
+         * @comment drop a table on the connected db
          */
         public function dropTable(string $tableName)
         {
-            $this->DB->query("DROP TABLE IF EXISTS ".$tableName);
+            $this->db->query("DROP TABLE IF EXISTS ".$tableName);
         }
 
         /**
@@ -182,7 +183,7 @@
         {
             if($this->hasPrimaryKey($tableName))
             {
-                $this->DB->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY");
+                $this->db->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY");
             }
         }
 
@@ -197,7 +198,7 @@
         {
             if(strtolower($columnType) == "int")
             {
-                $this->DB->query("ALTER TABLE ".$tableName." MODIFY ".$columnName." ".strtoupper($columnType)." NOT NULL");
+                $this->db->query("ALTER TABLE ".$tableName." MODIFY ".$columnName." ".strtoupper($columnType)." NOT NULL");
             }
         }
 
@@ -209,7 +210,7 @@
          */
         public function removeUniqueIndex(string $tableName, string $columnName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." DROP INDEX ".$columnName);
+            $this->db->query("ALTER TABLE ".$tableName." DROP INDEX ".$columnName);
         }
 
         /**
@@ -222,11 +223,11 @@
         {
             if($this->hasPrimaryKey($tableName))
             {
-                $this->DB->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY, ADD PRIMARY KEY(".$columnName.")");
+                $this->db->query("ALTER TABLE ".$tableName." DROP PRIMARY KEY, ADD PRIMARY KEY(".$columnName.")");
             }
             else
             {
-                $this->DB->query("ALTER TABLE ".$tableName." ADD PRIMARY KEY(".$columnName.")");
+                $this->db->query("ALTER TABLE ".$tableName." ADD PRIMARY KEY(".$columnName.")");
             }
         }
 
@@ -242,16 +243,16 @@
             {
                 if($this->hasPrimaryKey($tableName))
                 {
-                    $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT");
+                    $this->db->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT");
                 }
                 else
                 {
-                    $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                    $this->db->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
                 }
             }
             else
             {
-                $this->DB->query("ALTER TABLE ".$tableName." ADD COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                $this->db->query("ALTER TABLE ".$tableName." ADD COLUMN ".$columnName." INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
             }
         }
 
@@ -263,7 +264,7 @@
          */
         public function addUniqueIndex(string $tableName, string $columnName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." ADD UNIQUE(".$columnName.")");
+            $this->db->query("ALTER TABLE ".$tableName." ADD UNIQUE(".$columnName.")");
         }
 
         /**
@@ -273,7 +274,7 @@
          */
         public  function emptyTable(string $tableName)
         {
-            $this->DB->query("TRUNCATE TABLE ".$tableName);
+            $this->db->query("TRUNCATE TABLE ".$tableName);
         }
 
         /**
@@ -284,7 +285,7 @@
          */
         public function createColumn(string $tableName, DBTableField $field)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." ADD ".$field->Name." ".$field->getDBType()." NOT NULL");
+            $this->db->query("ALTER TABLE ".$tableName." ADD ".$field->name." ".$field->getdbType()." NOT NULL");
         }
 
         /**
@@ -295,7 +296,7 @@
          */
         public function dropColumn(string $tableName, string $fieldName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." DROP COLUMN ".$fieldName);
+            $this->db->query("ALTER TABLE ".$tableName." DROP COLUMN ".$fieldName);
         }
 
         /**
@@ -307,7 +308,7 @@
          */
         public function renameColumn(string $tableName, string $oldName, string $newName)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." RENAME COLUMN ".$oldName." TO ".$newName);
+            $this->db->query("ALTER TABLE ".$tableName." RENAME COLUMN ".$oldName." TO ".$newName);
         }
 
         /**
@@ -319,7 +320,7 @@
          */
         public function changeColumnType(string $tableName, string $columnName, string $newType)
         {
-            $this->DB->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." ".$newType);
+            $this->db->query("ALTER TABLE ".$tableName." MODIFY COLUMN ".$columnName." ".$newType);
         }
 
         /**
@@ -329,126 +330,127 @@
          */
         public function createTable(DBTable $tableImage)
         {
-            $query = "CREATE TABLE IF NOT EXISTS ".$tableImage->Name." (";
+            $query = "CREATE TABLE IF NOT EXISTS ".$tableImage->name." (";
 
             //add fields
-            for($i = 0; $i < count($tableImage->Fields); $i++)
+            for($i = 0; $i < count($tableImage->fields); $i++)
             {
-                $query .= (($i > 0) ? ", " : ""). $tableImage->Fields[$i]->Name." ".$tableImage->Fields[$i]->getDBType()." NOT NULL ".($tableImage->Fields[$i]->AutoIncrement ? "AUTO_INCREMENT" : "");
+                $query .= (($i > 0) ? ", " : ""). $tableImage->fields[$i]->name." ".$tableImage->fields[$i]->getdbType()." NOT NULL ".($tableImage->fields[$i]->autoIncrement ? "AUTO_INCREMENT" : "");
             }
             if($tableImage->hasPrimaryKey())
             {
-                $query .= ", primary key ( ".$tableImage->getPrimaryKey()->Name." )";
+                $query .= ", primary key ( ".$tableImage->getPrimaryKey()->name." )";
             }
             $query .= ")";
 
-            $this->DB->query($query);
+            $this->db->query($query);
         }
 
 
         //check if table has a primary key
         public function hasPrimaryKey(string $tableName)
         {
-            //$v = $this->DB->query("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE = 'PRIMARY KEY' AND TABLE_NAME='$tableName'");
-            $v = $this->DB->query("SHOW KEYS FROM $tableName WHERE Key_name = 'PRIMARY'");
+            //$v = $this->db->query("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_TYPE = 'PRIMARY KEY' AND TABLE_NAME='$tableName'");
+            $v = $this->db->query("SHOW KEYS FROM $tableName WHERE Key_name = 'PRIMARY'");
             return $v->num_rows > 0;
         }
 
         //check if table has a column
         public function hasColumn(string $tableName, $columnName)
         {
-            $v = $this->DB->query("SHOW COLUMNS FROM ".$tableName." LIKE '".$columnName."'");
+            $v = $this->db->query("SHOW COLUMNS FROM ".$tableName." LIKE '".$columnName."'");
             return $v->num_rows > 0;
         }
 
 
 
-        //private methods for doing database operations
+        #region private methods for doing database operations
 
-        private function ripType(string  $def)
+        private function ripType(string  $def): DBFieldType
         {
             $t = explode("(", $def)[0];
 
             if(strtolower($t) == "int")
             {
-                return DBFieldType::Int;
+                return DBFieldType::INT;
             }
             if(strtolower($t) == "varchar")
             {
-                return DBFieldType::Varchar;
+                return DBFieldType::VARCHAR;
             }
             if(strtolower($t) == "text")
             {
-                return DBFieldType::Text;
+                return DBFieldType::TEXT;
             }
             if(strtolower($t) == "date")
             {
-                return DBFieldType::Date;
+                return DBFieldType::DATE;
             }
             if(strtolower($t) == "float")
             {
-                return DBFieldType::Float;
+                return DBFieldType::FLOAT;
             }
             if(strtolower($t) == "double")
             {
-                return DBFieldType::Double;
+                return DBFieldType::DOUBLE;
             }
             if(strtolower($t) == "decimal")
             {
-                return DBFieldType::Decimal;
+                return DBFieldType::DECIMAL;
             }
             if(strtolower($t) == "enum")
             {
-                return DBFieldType::Enum;
+                return DBFieldType::ENUM;
             }
             if(strtolower($t) == "char")
             {
-                return DBFieldType::Char;
+                return DBFieldType::CHAR;
             }
             if(strtolower($t) == "current_timestamp")
             {
-                return DBFieldType::TimeStamp;
+                return DBFieldType::TIME_STAMP;
             }
             if(strtolower($t) == "longtext")
             {
-                return DBFieldType::LongText;
+                return DBFieldType::LONG_TEXT;
             }
             if(strtolower($t) == "tinyint")
             {
-                return DBFieldType::TinyInt;
+                return DBFieldType::TINY_INT;
             }
             if(strtolower($t) == "blob")
             {
-                return DBFieldType::Blob;
+                return DBFieldType::BLOB;
             }
             if(strtolower($t) == "bigint")
             {
-                return DBFieldType::BigInt;
+                return DBFieldType::BIG_INT;
             }
             if(strtolower($t) == "bit")
             {
-                return DBFieldType::Bit;
+                return DBFieldType::BIT;
             }
             if(strtolower($t) == "longblob")
             {
-                return DBFieldType::LongBlob;
+                return DBFieldType::LONG_BLOB;
             }
             if(strtolower($t) == "year")
             {
-                return DBFieldType::Year;
+                return DBFieldType::YEAR;
             }
             if(strtolower($t) == "time")
             {
-                return DBFieldType::Time;
+                return DBFieldType::TIME;
             }
             if(strtolower($t) == "set")
             {
-                return DBFieldType::Set;
+                return DBFieldType::SET;
             }
             if(strtolower($t) == "geometry")
             {
-                return DBFieldType::Geometry;
+                return DBFieldType::GEOMETRY;
             }
+            return DBFieldType::VARCHAR;
         }
 
         private function ripLength(string $def): ?int
@@ -456,7 +458,7 @@
             $ret = null;
             $type = $this->ripType($def);
 
-            if(($type != DBFieldType::Char) || ($type != DBFieldType::Varchar))
+            if(($type != DBFieldType::CHAR) || ($type != DBFieldType::VARCHAR))
             {
                 $t = explode("(", $def);
 
@@ -472,4 +474,5 @@
             }
             return $ret;
         }
+        #endregion
     }

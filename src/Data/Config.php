@@ -17,12 +17,7 @@
 
                 if(function_exists("dbConfig"))
                 {
-                    $dbconfig = dbConfig();
-
-                    if($dbconfig instanceof DBConfig)
-                    {
-                        $GLOBALS["WIXNIT_SQL_Connection_Credentials"] = $dbconfig;
-                    }
+                    dbConfig();
                 }
             }
             else
@@ -31,8 +26,16 @@
             }
         }
 
-        public static function setDBConfig(DBConfig $dbconfig)
+        /**
+         * set the DB credentials
+         * @param string $userName
+         * @param string $password
+         * @param string $dataBase
+         * @param string $server
+         * @return void
+         */
+        public static function DBCredentials(string $userName, string $password, string $dataBase, string $server="localhost")
         {
-            $GLOBALS["WIXNIT_SQL_Connection_Credentials"] = $dbconfig;
+            putenv("WIXNIT_MYSQL_Connection_Credentials=".json_encode(['server'=> $server, 'username'=> $userName, 'password'=> $password, 'database'=> $dataBase]));
         }
     }

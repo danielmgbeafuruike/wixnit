@@ -2,19 +2,18 @@
 
     namespace Wixnit\App;
 
-    use Wixnit\Data\DBTable;
     use mysqli;
 
     abstract class PointerSavable extends BaseModel
     {
-        protected bool $ForceAutoGenId = false;
-        private bool $Initialization = true;
+        protected bool $forceAutoGenId = false;
+        private bool $initialization = true;
 
-        function __construct(mysqli $dbConnection, bool $Initialize=true)
+        function __construct(mysqli $dbConnection, bool $initialize=true)
         {
-            $this->Initialization = $Initialize;
+            $this->initialization = $initialize;
 
-            if($this->Initialization)
+            if($this->initialization)
             {
                 parent::__construct($dbConnection, 'single_safe_record');
             }
@@ -28,10 +27,10 @@
         {
             parent::onCreated();
 
-            if(($this->Id == "") && ($this->Initialization))
+            if(($this->id == "") && ($this->initialization))
             {
-                $this->Id = "single_safe_record";
-                $this->Save();
+                $this->id = "single_safe_record";
+                $this->save();
             }
         }
     }

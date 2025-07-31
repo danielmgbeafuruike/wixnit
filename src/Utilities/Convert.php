@@ -2,21 +2,26 @@
 
     namespace Wixnit\Utilities;
 
-use SimpleXMLElement;
-use stdClass;
+    use SimpleXMLElement;
+    use stdClass;
 
     class Convert
     {
+        /**
+         * convert any compatible object to it's integer value
+         * @param mixed $arg
+         * @return int
+         */
         public static function ToInt($arg)
         {
             $ret = 0;
-            if($arg instanceof WixDate)
+            if($arg instanceof Date)
             {
-                $ret = $arg->getValue();
+                $ret = $arg->toEpochSeconds();
             }
-            else if($arg instanceof WixTime)
+            else if($arg instanceof Time)
             {
-                $ret = $arg->ToInt();
+                $ret = $arg->toSeconds();
             }
             else if(is_bool($arg))
             {
@@ -49,9 +54,14 @@ use stdClass;
             return intval($ret);
         }
 
+        /**
+         * convert any compatible object to it's boolean value
+         * @param mixed $arg
+         * @return bool
+         */
         public static function ToBool($arg)
         {
-            if($arg === "1")
+            if($arg == "1")
             {
                 return true;
             }
@@ -73,271 +83,22 @@ use stdClass;
             }
         }
 
-        public  static function ToPrivacy($arg): int
+        /**
+         * convert integers to words
+         * @param mixed $number
+         * @return string
+         */
+        public static function NumbersToWords(float $number): string
         {
-            if($arg === "1")
-            {
-                return 1;
-            }
-            else if($arg === "2")
-            {
-                return 2;
-            }
-            else if($arg === "3")
-            {
-                return 3;
-            }
-            else if($arg === "4")
-            {
-                return 4;
-            }
-            else if($arg === "5")
-            {
-                return 5;
-            }
-            else if($arg === "6")
-            {
-                return 6;
-            }
-            else if($arg === "7")
-            {
-                return 1;
-            }
-            else if($arg === "8")
-            {
-                return 8;
-            }
-            else if(strtoupper($arg) === "ONLY ME")
-            {
-                return 1;
-            }
-            else if(strtoupper($arg) === "FOLLOWERS ONLY")
-            {
-                return 2;
-            }
-            else if(strtoupper($arg) === "FOLLOWING ONLY")
-            {
-                return 3;
-            }
-            else if(strtoupper($arg) === "MY LEVEL ONLY")
-            {
-                return 4;
-            }
-            else if(strtoupper($arg) === "MY DEPARTMENT ONLY")
-            {
-                return 5;
-            }
-            else if(strtoupper($arg) === "MY FACULTY ONLY")
-            {
-                return 6;
-            }
-            else if(strtoupper($arg) === "MY SCHOOL ONLY")
-            {
-                return 7;
-            }
-            else if(strtoupper($arg) === "EVERY ONE")
-            {
-                return 8;
-            }
-            else if($arg == 1)
-            {
-                return 1;
-            }
-            else if($arg == 2)
-            {
-                return 2;
-            }
-            else if($arg == 3)
-            {
-                return 3;
-            }
-            else if($arg === 4)
-            {
-                return 4;
-            }
-            else if($arg === 5)
-            {
-                return 5;
-            }
-            else if($arg === 6)
-            {
-                return 6;
-            }
-            else if($arg === 7)
-            {
-                return 7;
-            }
-            else if($arg === 8)
-            {
-                return 8;
-            }
-            else if($arg === true)
-            {
-                return 8;
-            }
-            else if($arg === false)
-            {
-                return 1;
-            }
-            else
-            {
-                return 0;
-            }
+            return (new NumbersToWords($number))->words();
         }
 
-        public  static function ToPrivacyText($arg): string
-        {
-            $val = Convert::ToPrivacyText($arg);
-
-            switch ($val)
-            {
-                case 1:
-                    return "Only Me";
-                    break;
-                case 2:
-                    return "Followers Only";
-                    break;
-                case 3:
-                    return "Following Only";
-                    break;
-                case 7:
-                case 4:
-                    return "My School Only";
-                    break;
-                case 5:
-                    return "My Department Only";
-                    break;
-                case 6:
-                    return "My Faculty Only";
-                    break;
-                case 8:
-                    return "Everyone";
-                    break;
-                default:
-                    return "Unknown";
-            }
-        }
-
-        public  static function ToPrivacyShort($arg): string
-        {
-            $val = Convert::ToPrivacyText($arg);
-
-            switch ($val)
-            {
-                case 1:
-                    return "Only Me";
-                    break;
-                case 2:
-                    return "Followers";
-                    break;
-                case 3:
-                    return "Following";
-                    break;
-                case 7:
-                case 4:
-                    return "School";
-                    break;
-                case 5:
-                    return "Department";
-                    break;
-                case 6:
-                    return "Faculty";
-                    break;
-                case 8:
-                    return "Everyone";
-                    break;
-                default:
-                    return "Unknown";
-            }
-        }
-
-        public static function NumbersToWords($number): string
-        {
-            $ret = "unknown";
-
-            switch (Convert::ToInt($number))
-            {
-                case 0:
-                    $ret = "zero";
-                    break;
-                case 1:
-                    return "one";
-                    break;
-                case 2:
-                    return "two";
-                    break;
-                case 3:
-                    return "three";
-                    break;
-                case 4:
-                    return "four";
-                    break;
-                case 5:
-                    return "five";
-                    break;
-                case 6:
-                    return "six";
-                    break;
-                case 7:
-                    return "seven";
-                    break;
-                case 8:
-                    return "eight";
-                    break;
-                case 9:
-                    return "nine";
-                    break;
-                case 10:
-                    return "ten";
-                    break;
-                case 11:
-                    return "eleven";
-                    break;
-                case 12:
-                    return "twelve";
-                    break;
-                case 13:
-                    return "thirteen";
-                    break;
-                case 14:
-                    return "fourteen";
-                    break;
-                case 15:
-                    return "fifteen";
-                    break;
-                case 16:
-                    return "sixteen";
-                    break;
-                case 17:
-                    return "seventeen";
-                    break;
-                case 18:
-                    return "eighteen";
-                    break;
-                case 19:
-                    return "nineteen";
-                    break;
-                case 20:
-                    return "twenty";
-                    break;
-                case 21:
-                    return "twenty one";
-                    break;
-                case 22:
-                    return "twenty two";
-                    break;
-                case 23:
-                    return "twenty three";
-                    break;
-                default:
-                    $ret = "uncountable";
-
-            }
-
-            return $ret;
-        }
-
-        public static function MonthToNumber($month): int
+        /**
+         * get the integer value of parsed month
+         * @param string $month
+         * @return int
+         */
+        public static function MonthToNumber(string $month): int
         {
             $ret = 0;
 
@@ -397,7 +158,12 @@ use stdClass;
             return $ret;
         }
 
-        public static function IntToMonthShort($number): string
+        /**
+         * conert an integer from (1 - 12) to it's months value in short form jan, feb, mar etc.
+         * @param int $number
+         * @return string
+         */
+        public static function IntToMonthShort(int $number): string
         {
             $ret = "Unknown";
 
@@ -453,7 +219,12 @@ use stdClass;
             return $ret;
         }
 
-        public static function IntToMonth($number): string
+        /**
+         * conert an integer from (1 - 12) to it's months value in full form january, february, march etc.
+         * @param int $number
+         * @return string
+         */
+        public static function IntToMonth(int $number): string
         {
             $ret = "Unknown";
 
@@ -509,7 +280,12 @@ use stdClass;
             return $ret;
         }
 
-        public static function ArrayToStdClass($array): stdClass
+        /**
+         * convert any array to a standard stdClass object
+         * @param array $array
+         * @return stdClass
+         */
+        public static function ArrayToStdClass(array $array): stdClass
         {
             $object = new stdClass();
             foreach ($array as $key => $value) {
@@ -522,7 +298,13 @@ use stdClass;
             return $object;
         }
 
-
+        /**
+         * convert any stdClass to an XMLobject
+         * @param mixed $data
+         * @param mixed $rootElement
+         * @param mixed $xml
+         * @return string
+         */
         public static function StdClassToXML($data, $rootElement = 'root', $xml = null): string
         {
             if ($xml === null) 

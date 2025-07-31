@@ -35,7 +35,6 @@
             }
 
             $mapper = new DBMapper($this->db);
-            //echo json_encode($instance->getDBImage());
             $mapper->toTable($instance->getDBImage());
         }
     }

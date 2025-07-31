@@ -7,4 +7,7 @@ $baseDir = dirname($vendorDir);
 
 return array(
     'Wixnit\\' => array($baseDir . '/src'),
+    'Models\\' => array($baseDir . '/Models'),
+    'Guards\\' => array($baseDir . '/Guards'),
+    'Controllers\\' => array($baseDir . '/Controllers'),
 );

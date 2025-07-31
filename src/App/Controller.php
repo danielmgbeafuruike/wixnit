@@ -19,19 +19,61 @@
         protected ?SearchBuilder $searches = null;
         protected ?Order $order = null;
 
-        public function get(Request $req): void {}
+        /**
+         * Receive and process GET requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function get(Request $req, array $args=[]): void {}
 
-        public function delete(Request $req): void {}
+        /**
+         * Receive and process DELETE request
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function delete(Request $req, array $args=[]): void {}
 
-        public function create(Request $req): void {}
+        /**
+         * Receive and process POST request
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function create(Request $req, array $args=[]): void {}
 
-        public function update(Request $req): void {}
+        /**
+         * Receive and process PUT requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function update(Request $req, array $args=[]): void {}
 
-        public function patch(Request $req): void {}
+        /**
+         * Receive and process PATCH requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function patch(Request $req, array $args=[]): void {}
 
-        public function head(Request $req): void {}
+        /**
+         * Receive and process HEAD requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function head(Request $req, array $args=[]): void {}
 
-        public function option(Request $req): void {}
+        /**
+         * Receive and process OPTION requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function option(Request $req, array $args=[]): void {}
 
 
         /**

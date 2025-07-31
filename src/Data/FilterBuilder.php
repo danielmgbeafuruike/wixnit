@@ -2,56 +2,60 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\Enum\FilterOperation;
+
     class FilterBuilder
     {
         /**
-         * @var Filter
+         * @var Filter[] | FilterBuilder[]
          */
-        public $filter = [];
-        protected int $operation = Filter::AND;
+        public array $filters = [];
+        protected FilterOperation $operation = FilterOperation::AND;
 
+        /**
+         * Get the super query for all the built filters
+         * @return DBSQLPrep
+         */
         public function getQuery(): DBSQLPrep
         {
             $ret = new DBSQLPrep();
 
-            $ret->Query = "(";
-            for($i = 0; $i < count($this->filter); $i++)
+            $ret->query = "(";
+            for($i = 0; $i < count($this->filters); $i++)
             {
-                $p = $this->filter[$i]->getQuery();
-                $ret->Query .= ((trim($ret->Query) != "(") ? (($this->operation == Filter::OR) ? " OR " : " AND ") : "")."(".$p->Query.")";
+                $p = $this->filters[$i]->getQuery();
+                $ret->query .= ((trim($ret->query) != "(") ? (($this->operation == FilterOperation::OR) ? " OR " : " AND ") : "")."(".$p->query.")";
 
-                $ret->Types = array_merge($ret->Types, $p->Types);
-                $ret->Values = array_merge($ret->Values, $p->Values);
+                $ret->types = array_merge($ret->types, $p->types);
+                $ret->values = array_merge($ret->values, $p->values);
             }
-            $ret->Query .= ")";
+            $ret->query .= ")";
             return  $ret;
         }
 
-        public function add($filter)
+        /**
+         * Add filter to the filter builder
+         * @param mixed $filter
+         * @return void
+         */
+        public function add(Filter | FilterBuilder $filter): void
         {
-            if((($filter instanceof Filter)) || ($filter instanceof FilterBuilder))
+            if(($filter instanceof Filter) || ($filter instanceof FilterBuilder))
             {
-                $this->filter[] = $filter;
+                $this->filters[] = $filter;
             }
         }
 
-        public function setOperation($operation)
+        /**
+         * Set the general operation for the builder
+         * @param mixed $operation
+         * @return void
+         */
+        public function setOperation($operation): void
         {
-            if(($operation == Filter::OR) || ($operation == Filter::AND))
+            if(($operation == FilterOperation::OR) || ($operation == FilterOperation::AND))
             {
                 $this->operation = $operation;
             }
-        }
-
-        public function Serialize()
-        {
-
-        }
-
-        public static function Deserialize($filters): FilterBuilder
-        {
-            $ret = new FilterBuilder();
-
-            return $ret;
         }
     }

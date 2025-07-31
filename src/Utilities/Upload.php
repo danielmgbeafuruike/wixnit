@@ -6,12 +6,11 @@
 
     class Upload
 	{
-		public $Type = "";
-		public $Extension = "";
-		public $Size = 0.0;
-		public $Name = "";
-
-		private $Temp = "";
+		public string $type = "";
+		public string $extension = "";
+		public int $size = 0.0;
+		public string $name = "";
+		private string $temp = "";
 		private $file = null;
 		
 		function __construct($arg=null)
@@ -23,47 +22,38 @@
                     if(is_uploaded_file($arg['tmp_name']))
                     {
                         $this->file = $arg;
-                        $this->Size = $arg["size"];
-                        $this->Name = $arg["name"];
-                        $this->Type = $arg["type"];
-                        $this->Temp = $arg["tmp_name"];
-                        $this->Extension = "";
+                        $this->size = $arg["size"];
+                        $this->name = $arg["name"];
+                        $this->type = $arg["type"];
+                        $this->temp = $arg["tmp_name"];
+                        $this->extension = "";
 
                         $ext = "";
-                        $e = explode(".", $this->Name);
+                        $e = explode(".", $this->name);
                         if(count($e) > 1)
                         {
-                            $this->Extension = $e[count($e) - 1];
+                            $this->extension = $e[count($e) - 1];
                         }
                     }
                     else
                     {
-                        try {
-                            $log = new Log();
-                            $log->Event = "File upload attack detected";
-                            $log->Source = $_SERVER['PHP_SELF'];
-                            $log->Save();
-                        }
-                        catch(Exception $e)
-                        {
-                            //Exception handling
-                        }
+                        
                     }
                 }
                 else if(isset($_FILES[$arg]))
                 {
                     $this->file = $_FILES[$arg];
-                    $this->Size = $_FILES[$arg]["size"];
-                    $this->Name = $_FILES[$arg]["name"];
-                    $this->Type = $_FILES[$arg]["type"];
-                    $this->Temp = $_FILES[$arg]["tmp_name"];
-                    $this->Extension = "";
+                    $this->size = $_FILES[$arg]["size"];
+                    $this->name = $_FILES[$arg]["name"];
+                    $this->type = $_FILES[$arg]["type"];
+                    $this->temp = $_FILES[$arg]["tmp_name"];
+                    $this->extension = "";
 
                     $ext = "";
-                    $e = explode(".", $this->Name);
+                    $e = explode(".", $this->name);
                     if(count($e) > 1)
                     {
-                        $this->Extension = $e[count($e) - 1];
+                        $this->extension = $e[count($e) - 1];
                     }
                 }
             }
@@ -76,11 +66,17 @@
             }
 		}
 		
-		public function Save($directory, $newName=null)
+        /**
+         * save the uploaded file to a directory
+         * @param string $directory
+         * @param string|null $newName
+         * @return string|bool
+         */
+		public function save($directory, $newName=null): bool|string
 		{
             if($newName == null)
             {
-                $newName = $this->Name;
+                $newName = $this->name;
             }
             if($this->file != null)
             {
@@ -93,11 +89,17 @@
             }
 		}
 
-        public function Drop($directory, $newName)
+        /**
+         * save the uploaded file to a directory with a new name
+         * @param string $directory
+         * @param string|null $newName
+         * @return string|bool
+         */
+        public function drop($directory, $newName): bool|string
         {
             if($newName == null)
             {
-                $newName = $this->Name;
+                $newName = $this->name;
             }
             else if($this->file != null)
             {
@@ -110,9 +112,14 @@
             }
         }
 
-        public function TypeIs($type)
+        /**
+         * check if the uploaded file type matches the given type
+         * @param string $type
+         * @return bool
+         */
+        public function typeIs($type): bool
         {
-            if($this->Type == strtolower(trim($type)))
+            if($this->type == strtolower(trim($type)))
             {
                 return true;
             }
@@ -122,11 +129,19 @@
             }
         }
 		
-		public function SaveCompressed($directory, $newName, $quality, $minSize=100)
+        /**
+         * save the uploaded file to a directory with compression
+         * @param string $directory
+         * @param string|null $newName
+         * @param int $quality
+         * @param int $minSize
+         * @return mixed
+         */
+		public function saveCompressed($directory, $newName, $quality, $minSize=100): mixed
         {
             if($newName == null)
             {
-                $newName = $this->Name;
+                $newName = $this->name;
             }
             if($this->file != null)
             {

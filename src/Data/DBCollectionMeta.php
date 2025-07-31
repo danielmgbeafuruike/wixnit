@@ -4,23 +4,29 @@
     
     class DBCollectionMeta
     {
-        public $PageSize = 0;
-        public $PerPage = 0;
-        public $CurrentPage = 0;
+        public $pageSize = 0;
+        public $perPage = 0;
+        public $currentPage = 0;
 
         function __construct($pageSize=0, $currentPage=0, $perPage=0)
         {
-            $this->PageSize = $pageSize;
-            $this->PerPage = $perPage;
-            $this->CurrentPage = $currentPage;
+            $this->pageSize = $pageSize;
+            $this->perPage = $perPage;
+            $this->currentPage = $currentPage;
         }
 
-        public static function ByPagination($total, Pagination $pagination): DBCollectionMeta
+        /**
+         * Create a DBCollectionMeta object from a Pagination object
+         * @param int $total Total number of items
+         * @param Pagination $pagination Pagination object
+         * @return DBCollectionMeta
+         */
+        public static function FromPagination($total, Pagination $pagination): DBCollectionMeta
         {
             $ret = new DBCollectionMeta();
-            $ret->PageSize = ceil($total / $pagination->Limit);
-            $ret->PerPage = $pagination->Limit;
-            $ret->CurrentPage = ($pagination->Offset / $pagination->Limit) + 1;
+            $ret->pageSize = ceil($total / $pagination->limit);
+            $ret->perPage = $pagination->limit;
+            $ret->currentPage = ($pagination->offset / $pagination->limit) + 1;
             return $ret;
         }
     }

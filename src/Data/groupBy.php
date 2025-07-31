@@ -2,12 +2,7 @@
 
     namespace Wixnit\Data;
 
-    class groupBy
+    class GroupBy
     {
-        public $Value = "";
-
-        function __construct(string $field)
-        {
-            $this->Value = $field;
-        }
+        function __construct(public string $value){}
     }

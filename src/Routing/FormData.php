@@ -8,57 +8,104 @@
 
     class FormData implements ArrayAccess
     {
-        public array $Args = [];
+        public array $args = [];
 
         function __construct() {}
 
-
-        public function Has(string $arg): bool
+        /**
+         * Check if an argument exists
+         * @param string $arg
+         * @return bool
+         */
+        public function has(string $arg): bool
         {
-            return isset($this->Args[$arg]);
+            return isset($this->args[$arg]);
         }
 
-        public function ToJson(): stdClass
+        /**
+         * Convert the form data to JSON
+         * @return stdClass
+         */
+        public function toJson(): stdClass
         {
-            return Convert::ArrayToStdClass($this->Args);
+            return Convert::ArrayToStdClass($this->args);
         }
 
-        public function ToXML(): string
+        /**
+         * Convert the form data to XML
+         * @return string
+         */
+        public function toXML(): string
         {
-            return Convert::StdClassToXML(Convert::ArrayToStdClass($this->Args));
+            return Convert::StdClassToXML(Convert::ArrayToStdClass($this->args));
+        }
+
+        /**
+         * magic get method to access args
+         * @param mixed $name
+         * @return mixed
+         */
+        public function __get($name): mixed
+        {
+            if (isset($this->args[$name])) {
+                return $this->args[$name];
+            }
+            return null;
         }
 
 
 
-        /*
-        // ArrayAccess Interface Implimentation 
-        */
+        #region ArrayAccess Interface Implimentation 
 
+        /**
+         * Check if an offset exists
+         * @param mixed $offset
+         * @return bool
+         */
         public function offsetExists(mixed $offset): bool
         {
-            return isset($this->Args[$offset]);
+            return isset($this->args[$offset]);
         }
+
+        /**
+         * Get the value at the specified offset
+         * @param mixed $offset
+         * @return mixed
+         */
         public function offsetGet(mixed $offset): mixed
         {
-            if(!isset($this->Args[$offset]))
+            if(!isset($this->args[$offset]))
             {
                 return null;
             }
-            return  $this->Args[$offset];
+            return  $this->args[$offset];
         }
+
+        /**
+         * Set the value at the specified offset
+         * @param mixed $offset
+         * @param mixed $value
+         * @return void
+         */
         public function offsetSet(mixed $offset, mixed $value): void
         {
             if(is_null($offset))
             {
-                $this->Args[] = $value;
+                $this->args[] = $value;
             }
             else
             {
-                $this->Args[$offset] = $value;
+                $this->args[$offset] = $value;
             }
         }
+
+        /**
+         * Unset the value at the specified offset
+         * @param mixed $offset
+         * @return void
+         */
         public function offsetUnset(mixed $offset): void
         {
-            unset($this->Args[$offset]);
+            unset($this->args[$offset]);
         }
     }
