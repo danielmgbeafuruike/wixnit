@@ -31,8 +31,7 @@
         }
 
         /**
-         * Get data from the db in a DBCollection object filtered and estricted by Filters, Searches, Pagination and other DB result restriciting objects
-         * @param array $
+         * Get data from the db in a DBCollection object filtered and restricted by Filters, Searches, Pagination and other DB result restriciting objects
          * @return DBCollection
          */
         public static function Get(): DBCollection
@@ -52,7 +51,6 @@
 
         /**
          * Delete items from the db virtually without loosing the actual data. All fetch operations will ignore this records
-         * @param array $
          * @return DBCollection
          */
         public static function SoftDeleted(): DBCollection
@@ -72,7 +70,6 @@
 
         /**
          * Get the number of rows retrieved by processing Filters, Searches etc.
-         * @param array $
          * @return int
          */
         public static function Count(): int
@@ -92,7 +89,6 @@
 
         /**
          * Count the items that have been virtually deleted
-         * @param array $
          * @return int
          */
         public static function CountDeleted(): int
@@ -112,7 +108,6 @@
 
         /**
          * Delete all the virtually deleted items from the db
-         * @param array $
          * @return void
          */
         public static function Purge(): DBResult
@@ -132,7 +127,6 @@
 
         /**
          * Delete items by passing their ids or an instance of the item
-         * @param array $
          * @return void
          */
         public static function DeleteList(): DBResult
@@ -152,7 +146,6 @@
 
         /**
          * Delete items by passing their ids or an instance of the item
-         * @param array $
          * @return void
          */
         public static function SaveList(): void

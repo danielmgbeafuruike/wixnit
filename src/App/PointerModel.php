@@ -14,7 +14,7 @@
         }
 
         /**
-         * Get data from the db in a DBCollection object filtered and estricted by Filters, Searches, Pagination and other DB result restriciting objects
+         * Get data from the db in a DBCollection object filtered and restricted by Filters, Searches, Pagination and other DB result restriciting objects
          * @param array $
          * @return DBCollection
          */
@@ -25,7 +25,6 @@
 
         /**
          * Delete items from the db virtually without loosing the actual data. All fetch operations will ignore this records
-         * @param array $
          * @return DBCollection
          */
         public static function SoftDeleted(mysqli $dbConnection): DBCollection
@@ -35,7 +34,6 @@
 
         /**
          * Get the number of rows retrieved by processing Filters, Searches etc.
-         * @param array $
          * @return int
          */
         public static function Count(mysqli $dbConnection): int
@@ -45,7 +43,6 @@
 
         /**
          * Count the items that have been virtually deleted
-         * @param array $
          * @return int
          */
         public static function CountDeleted(mysqli $dbConnection): int
@@ -55,7 +52,6 @@
 
         /**
          * Delete all the virtually deleted items from the db
-         * @param array $
          * @return void
          */
         public static function Purge(mysqli $dbConnection): DBResult
@@ -65,7 +61,6 @@
 
         /**
          * Delete items by passing their ids or an instance of the item
-         * @param array $
          * @return void
          */
         public static function DeleteList(mysqli $dbConnection): DBResult
@@ -75,7 +70,6 @@
 
         /**
          * Delete items by passing their ids or an instance of the item
-         * @param array $
          * @return void
          */
         public static function SaveList(mysqli $dbConnection): void
