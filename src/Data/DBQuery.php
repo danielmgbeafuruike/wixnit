@@ -725,7 +725,7 @@
 
             for($i = 0; $i < count($this->joins); $i++)
             {
-                $name = ($this->joins[$i]['map'] instanceof ObjectMap) ? strtolower(array_reverse(explode("\\", $this->joins[$i]['map']->Name))[0]) : $this->joins[$i]['join'];
+                $name = ($this->joins[$i]['map'] instanceof ObjectMap) ? strtolower(array_reverse(explode("\\", $this->joins[$i]['map']->name))[0]) : $this->joins[$i]['join']->value;
 
                 $joinName = ($this->joins[$i]['field_1'] != $this->db->tableName) ? $this->joins[$i]['field_1'] : "_".$this->joins[$i]['field_1'];
 
@@ -736,14 +736,14 @@
 
                 if($this->joins[$i]['map'] instanceof ObjectMap)
                 {
-                    $this->query .= " ".$this->joins[$i]['join']." JOIN ".$name." ".$joinName." ON ".$this->db->tableName.".".$this->joins[$i]['field_1'].
+                    $this->query .= " ".$this->joins[$i]['join']->value." JOIN ".$name." ".$joinName." ON ".$this->db->tableName.".".$this->joins[$i]['field_1'].
                         " = ".$joinName.".".$this->joins[$i]['field_2'];
 
                     $this->joined_tables[] = $joinName;
                 }
                 else
                 {
-                    $this->query .= " ".$this->joins[$i]['join']." JOIN ".$this->joins[$i]['map']." ON ".$this->db->tableName.".".$this->joins[$i]['field_1'].
+                    $this->query .= " ".$this->joins[$i]['join']->value." JOIN ".$this->joins[$i]['map']." ON ".$this->db->tableName.".".$this->joins[$i]['field_1'].
                         " = ".$joinName.".".$this->joins[$i]['field_2'];
 
                     $this->joined_tables[] = $joinName;
@@ -827,13 +827,13 @@
                     }
                     $this->joined_tables[] = $n;
 
-                    for($j = 0; $j < count($this->joins[$i]['map']->PublicProperties); $j++)
+                    for($j = 0; $j < count($this->joins[$i]['map']->publicProperties); $j++)
                     {
-                        $joins .= (($joins != "") ? ", " : ""). $n.".".strtolower($this->joins[$i]['map']->PublicProperties[$j]->baseName)." AS ".$n."_".strtolower($this->joins[$i]['map']->PublicProperties[$j]->baseName);
+                        $joins .= (($joins != "") ? ", " : ""). $n.".".strtolower($this->joins[$i]['map']->publicProperties[$j]->baseName)." AS ".$n."_".strtolower($this->joins[$i]['map']->publicProperties[$j]->baseName);
                     }
-                    for($j = 0; $j < count($this->joins[$i]['map']->HiddenProperties); $j++)
+                    for($j = 0; $j < count($this->joins[$i]['map']->hiddenProperties); $j++)
                     {
-                        $joins .= (($joins != "") ? ", " : ""). $n.".".strtolower($this->joins[$i]['map']->HiddenProperties[$j]->baseName)." AS ".$n."_".strtolower($this->joins[$i]['map']->HiddenProperties[$j]->baseName);
+                        $joins .= (($joins != "") ? ", " : ""). $n.".".strtolower($this->joins[$i]['map']->hiddenProperties[$j]->baseName)." AS ".$n."_".strtolower($this->joins[$i]['map']->hiddenProperties[$j]->baseName);
                     }
                 }
                 else

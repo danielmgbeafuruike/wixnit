@@ -2,6 +2,7 @@
 
     namespace Wixnit\Data;
 
+    use Exception;
     use ReflectionClass;
     use ReflectionObject;
     use stdClass;
@@ -119,7 +120,7 @@
             $reflection = is_object($object) ? new ReflectionObject($object) : new ReflectionClass($object);
 
             $ret = new ObjectMap();
-            $ret->Name = $reflection->getShortName();
+            $ret->name = $reflection->getShortName();
 
             $props = $reflection->getProperties();
 
@@ -128,19 +129,19 @@
                 if($props[$i]->getModifiers() == 1)
                 {
                     $prop = new ObjectProperty();
-                    $prop->Name = $props[$i]->getName();
+                    $prop->name = $props[$i]->getName();
 
                     if($props[$i]->getType() != null)
                     {
-                        $prop->Type = $props[$i]->getType()->getName();
+                        $prop->type = $props[$i]->getType()->getName();
                     }
                     else if(is_object($object))
                     {
-                        $prop->Type = strtolower(gettype($props[$i]->getValue($object)));
+                        $prop->type = strtolower(gettype($props[$i]->getValue($object)));
                     }
                     else
                     {
-                        $prop->Type = null;
+                        $prop->type = null;
                     }
                     $ret->publicProperties[] = $prop;
                 }
@@ -384,6 +385,11 @@
             if(array_key_exists($propertyName, $this->hiddenProperties))
             {
                 return $this->hiddenProperties[$propertyName];
+            }
+            if(!isset($this->$propertyName))
+            {
+                $trace = debug_backtrace();
+                throw(new Exception("getProperty() cannot find the propety $propertyName at ".json_encode($trace)));
             }
             return $this->$propertyName;
         }

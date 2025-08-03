@@ -3,6 +3,7 @@
     namespace Wixnit\Routing;
 
     use Closure;
+    use ReflectionClass;
     use Wixnit\App\Controller;
     use Wixnit\App\View;
     use Wixnit\Enum\HTTPMethod;
@@ -97,7 +98,7 @@
                     }
                 }
 
-                if($handlerMethod && method_exists($instance, $handlerMethod))
+                if(($handlerMethod != null) && method_exists($instance, $handlerMethod))
                 {
                     $this->handler = function(...$args) use ($instance, $handlerMethod) {
                         $instance->$handlerMethod(...$args);
@@ -105,7 +106,7 @@
                 }
                 else
                 {
-                    throw new \InvalidArgumentException("The specified handler method does not exist in the provided class.");
+                    throw new \InvalidArgumentException("The specified handler method \"".$handlerMethod."\" does not exist in the provided class \"".(new ReflectionClass($instance))->getShortName()."\"");
                 }
             }
         }
