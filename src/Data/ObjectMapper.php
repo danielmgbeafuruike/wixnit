@@ -2,12 +2,13 @@
 
     namespace Wixnit\Data;
 
+    use Exception;
     use ReflectionClass;
     use ReflectionEnum;
 
     class ObjectMapper extends Mappable
     {
-        public ?ObjectMap $Map = null;
+        public ?ObjectMap $map = null;
         private $object = null;
 
         function __construct($template_object)
@@ -16,11 +17,11 @@
 
             if($template_object instanceof Mappable)
             {
-                $this->Map = $template_object->GetMap();
+                $this->map = $template_object->GetMap();
             }
             else
             {
-                $this->Map = ObjectMapper::MapObject($template_object);
+                $this->map = ObjectMapper::MapObject($template_object);
             }
             $this->object = $template_object;
         }
@@ -34,23 +35,23 @@
         {
             if($this->object != null)
             {
-                $objMap = ($receiving_object instanceof Mappable) ? $receiving_object->GetMap() : ObjectMapper::MapObject($receiving_object);
+                $objMap = ($receiving_object instanceof Mappable) ? $receiving_object->getMap() : ObjectMapper::MapObject($receiving_object);
 
-                for($i = 0; $i < count($this->Map->PublicProperties); $i++)
+                for($i = 0; $i < count($this->map->publicProperties); $i++)
                 {
-                    $prop = $objMap->GetProperty($this->Map->PublicProperties[$i], false);
+                    $prop = $objMap->getProperty($this->map->publicProperties[$i], false);
 
                     if($prop != null)
                     {
-                        $toName = $prop->Name;
-                        $fromName = $this->Map->PublicProperties[$i]->Name;
+                        $toName = $prop->name;
+                        $fromName = $this->map->publicProperties[$i]->name;
 
                         
-                        if(class_exists($prop->Type))
+                        if(class_exists($prop->type))
                         {
-                            if((new ReflectionClass($prop->Type))->isEnum())
+                            if((new ReflectionClass($prop->type))->isEnum())
                             {
-                                $enumRef = new ReflectionEnum($prop->Type);
+                                $enumRef = new ReflectionEnum($prop->type);
                                 $cases = $enumRef->getCases();
 
                                 for($en = 0; $en < count($cases); $en++)
@@ -64,13 +65,13 @@
                             }
                             else
                             {
-                                if((new ReflectionClass($prop->Type))->isSubclassOf(Transactable::class))
+                                if((new ReflectionClass($prop->type))->isSubclassOf(Transactable::class))
                                 {
-                                    $innerInstance = (new ReflectionClass($prop->Type))->newInstance($db);
+                                    $innerInstance = (new ReflectionClass($prop->type))->newInstance($db);
                                 }
                                 else
                                 {
-                                    $innerInstance = (new ReflectionClass($prop->Type))->newInstance();
+                                    $innerInstance = (new ReflectionClass($prop->type))->newInstance();
                                 }
                                 $innerMapper = new ObjectMapper($this->object->$fromName);
                                 $innerMapper->mapTo($innerInstance, $db);

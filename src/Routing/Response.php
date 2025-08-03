@@ -113,12 +113,12 @@
         {
             http_response_code($this->statusCode->value);
 
-            foreach ($this->headers as $name => $value) {
+             $global_headers = Response::GetGlobalHeaders();
+            foreach ($global_headers as $name => $value) {
                 header("$name: $value");
             }
 
-            $global_headers = Response::GetGlobalHeaders();
-            foreach ($global_headers as $name => $value) {
+            foreach ($this->headers as $name => $value) {
                 header("$name: $value");
             }
 
@@ -239,25 +239,20 @@
             $keys = array_keys($headers);
             for($i = 0; $i < count($keys); $i++)
             {
-                $prep[]= $headers[$keys[$i]];
+                $prep[$keys[$i]] = $headers[$keys[$i]];
             }
             putenv('Wixnit-Global-Headers='. json_encode($prep));
         }
 
         public static function SetGlobalCorsHeaders(string $allow="*", array $methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']): void
         {
-            Response::SetGlobalHeaders([
-                'Access-Control-Allow-Origin' => $allow,
-                'Access-Control-Allow-Headers' => 'X-Requested-With, content-Type, Authorization',
-            ]);
-            if (!empty($methods)) {
-                Response::SetGlobalHeaders([
-                    'Access-Control-Allow-Methods' => implode(', ', $methods)
-                ]);
-            }
+            header("Access-Control-Allow-Origin: $allow");
+            header("Access-Control-Allow-Headers: X-Requested-With, content-Type, Authorization");
+            header("Access-Control-Max-Age: 86400");
 
-            // Set the age to 1 day to improve speed/caching.
-            //header('Access-Control-Max-Age: 86400');
+            if (!empty($methods)) {
+                header("Access-Control-Allow-Methods: ".implode(', ', $methods));
+            }
 
             if ($_SERVER["REQUEST_METHOD"] === 'OPTIONS') {
                 header('HTTP/1.1 200 OK');
