@@ -15,7 +15,6 @@
 
         /**
          * Get data from the db in a DBCollection object filtered and restricted by Filters, Searches, Pagination and other DB result restriciting objects
-         * @param array $
          * @return DBCollection
          */
         public static function Get(mysqli $dbConnection): DBCollection
@@ -74,6 +73,6 @@
          */
         public static function SaveList(mysqli $dbConnection): void
         {
-            return parent::QuickSave($dbConnection, ...func_get_args());
+            parent::QuickSave($dbConnection, ...func_get_args());
         }
     }
