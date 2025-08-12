@@ -40,12 +40,12 @@ class Router
 
     /**
      * add routes that can process request with any method
-     * @param string $path
+     * @param string|array $path
      * @param string|Closure|View|Path $arg
      * @param string|null $handlerMethod
      * @return RouteCollection
      */
-    public function any(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function any(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -68,12 +68,12 @@ class Router
 
     /**
      * add routes that process requests send with PUT method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function put(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function put(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -96,12 +96,12 @@ class Router
 
     /**
      * add routes that process requests send with POST method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function post(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function post(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -124,12 +124,12 @@ class Router
 
     /**
      * add routes that process requests send with GET method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function get(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function get(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -152,12 +152,12 @@ class Router
 
     /**
      * add routes that process requests send with DELETE method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function delete(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function delete(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -180,12 +180,12 @@ class Router
 
     /**
      * add routes that process requests send with DELETE method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function patch(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function patch(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -208,12 +208,12 @@ class Router
 
     /**
      * add routes that process requests send with HEAD method
-     * @param string $path
+     * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
      * @return RouteCollection
      */
-    public function head(string $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    public function head(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
         if(is_array($path))
         {
@@ -406,7 +406,7 @@ class Router
                     $extra = true;
                 }
 
-                $ds = isset($_SERVER['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO']), "/") : explode("/", trim($_SERVER['PATH_INFO'], "/"));
+                $ds = isset($_SERVER['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO'], "/")) : explode("/", trim($_SERVER['PATH_INFO'], "/"));
                 for($i = 0; $i < (count($ds) - 1); $i++)
                 {
                     $prepend .= "../";
@@ -438,8 +438,8 @@ class Router
             $ret = "../".$ret;
         }
 
-        $dPath = Router::GetDataRoutString();
-        return $prepend.(($dPath != "") ? Router::GetDataRoutString()."/" : "").$ret;
+        $dPath = Router::GetDataRouteString();
+        return $prepend.(($dPath != "") ? Router::GetDataRouteString()."/" : "").$ret;
     }
 
     /**

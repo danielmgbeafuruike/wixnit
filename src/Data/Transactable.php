@@ -160,7 +160,7 @@
             $idProp->type = DBFieldType::INT;
             $idProp->isPrimary = true;
             $idProp->autoIncrement = true;
-            $image->AddField($idProp);
+            $image->addField($idProp);
 
 
             $midProp = new DBTableField();
@@ -168,25 +168,25 @@
             $midProp->type = DBFieldType::VARCHAR;
             $midProp->isUnique = true;
             $midProp->length = 64;
-            $image->AddField($midProp);
+            $image->addField($midProp);
 
 
             $createdProp = new DBTableField();
             $createdProp->name = "created";
             $createdProp->type = DBFieldType::INT;
-            $image->AddField($createdProp);
+            $image->addField($createdProp);
 
 
             $modifiedProp = new DBTableField();
             $modifiedProp->name = "modified";
             $modifiedProp->type = DBFieldType::INT;
-            $image->AddField($modifiedProp);
+            $image->addField($modifiedProp);
 
 
             $modifiedProp = new DBTableField();
             $modifiedProp->name = "deleted";
             $modifiedProp->type = DBFieldType::INT;
-            $image->AddField($modifiedProp);
+            $image->addField($modifiedProp);
 
 
             //add regular fields
@@ -264,7 +264,7 @@
                         {
                             $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->getConnection()) : $ref->newInstance();
 
-                            $fieldProp->type = $obj->_DBType();
+                            $fieldProp->type = $obj->_dbType();
                             $fieldProp->length = 100;
                             $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
@@ -310,7 +310,7 @@
                             $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
-                    $image->AddField($fieldProp);
+                    $image->addField($fieldProp);
                 }
             }
 
@@ -340,7 +340,7 @@
                         {
                             $obj = ($ref->isSubclassOf(Transactable::class)) ? $ref->newInstance($this->db->getConnection()) : $ref->newInstance();
 
-                            $fieldProp->type = $obj->_DBType();
+                            $fieldProp->type = $obj->_dbType();
                             $fieldProp->length = 100;
                             $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
@@ -386,7 +386,7 @@
                             $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
                         }
                     }
-                    $image->AddField($fieldProp);
+                    $image->addField($fieldProp);
                 }
             }
 
@@ -444,7 +444,7 @@
                     $fieldProp->type = DBFieldType::TEXT;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                $image->AddField($fieldProp);
+                $image->addField($fieldProp);
             }
             return $image;
         }
@@ -796,7 +796,7 @@
                                     for($x = 0; $x < count($arr); $x++)
                                     {
                                         $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->getConnection()) : $arr_ref->newInstance();
-                                        $a->_Deserialize($arr[$x]);
+                                        $a->_deserialize($arr[$x]);
                                         $obj[] = $a;
                                     }
                                     $ref->getProperty($prop->name)->setValue($this, $obj);
@@ -848,7 +848,7 @@
 
                                 if($objRef->implementsInterface(ISerializable::class))
                                 {
-                                    $obj->_Deserialize($data[strtolower($prop->baseName)]);
+                                    $obj->_deserialize($data[strtolower($prop->baseName)]);
                                 }
                                 else if($objRef->isSubclassOf(Transactable::class))
                                 {
@@ -946,7 +946,7 @@
                                     for($x = 0; $x < count($arr); $x++)
                                     {
                                         $a = ($arr_ref->isSubclassOf(Transactable::class)) ? $arr_ref->newInstance($this->db->getConnection()) : $arr_ref->newInstance();
-                                        $a->_Deserialize($arr[$x]);
+                                        $a->_deserialize($arr[$x]);
                                         $obj[] = $a;
                                     }
                                     $this->setProperty($prop->name, $obj);
@@ -997,7 +997,7 @@
                                     }
                                     else if($objRef->implementsInterface(ISerializable::class))
                                     {
-                                        $obj->_Deserialize($data[strtolower($prop->baseName)]);
+                                        $obj->_deserialize($data[strtolower($prop->baseName)]);
                                     }
                                     else
                                     {
@@ -1028,7 +1028,7 @@
                                     }
                                     else if($objRef->implementsInterface(ISerializable::class))
                                     {
-                                        $obj->_Deserialize($data[strtolower($prop->baseName)]);
+                                        $obj->_deserialize($data[strtolower($prop->baseName)]);
                                     }
                                     else
                                     {

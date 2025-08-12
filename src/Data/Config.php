@@ -36,6 +36,6 @@
          */
         public static function DBCredentials(string $userName, string $password, string $dataBase, string $server="localhost")
         {
-            putenv("WIXNIT_MYSQL_Connection_Credentials=".json_encode(['server'=> $server, 'username'=> $userName, 'password'=> $password, 'database'=> $dataBase]));
+            $GLOBALS["WIXNIT_MYSQL_Connection_Credentials"] = ['server'=> $server, 'username'=> $userName, 'password'=> $password, 'database'=> $dataBase];
         }
     }

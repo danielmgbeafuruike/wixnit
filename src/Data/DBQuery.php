@@ -387,7 +387,7 @@
             {
                 if(count($this->operations) > 0)
                 {
-                    return $this->Update($data);
+                    return $this->update($data);
                 }
                 else
                 {
@@ -792,7 +792,7 @@
 
                     if((count($this->joins) > 0) && ((count($jPrep) < 2) || (($jPrep[0] != $this->db->tableName) && (!in_array($jPrep[0], $this->joined_tables)))))
                     {
-                        $this->order->Field = $this->db->tableName.".".$this->order->field;
+                        $this->order->field = $this->db->tableName.".".$this->order->field;
                     }
                     $order = $this->order->getQuery();
                 }
@@ -923,9 +923,9 @@
                 }
                 else if($op instanceof FilterBuilder)
                 {
-                    for($i = 0; $i < count($op->filter); $i++)
+                    for($i = 0; $i < count($op->filters); $i++)
                     {
-                        $op->filter[$i] = $this->preprocessOp($op->filter[$i]);
+                        $op->filters[$i] = $this->preprocessOp($op->filters[$i]);
                     }
                 }
                 else if($op instanceof Search)
