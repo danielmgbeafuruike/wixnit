@@ -5,7 +5,7 @@
     use mysqli;
     use Wixnit\Enum\DBFieldType;
 
-    class dbMapper
+    class DBMapper
     {
         private mysqli $db;
 
@@ -61,7 +61,7 @@
                     {
                         if($currentImage->fields[$i]->name == $tableImage->columnSwitches[$j]['old'])
                         {
-                            $this->renameColumn($currentImage->name, $currentImage->fields[$i], $tableImage->columnSwitches[$j]['new']);
+                            $this->renameColumn($currentImage->name, $currentImage->fields[$i]->name, $tableImage->columnSwitches[$j]['new']);
                             break;
                         }
                     }
@@ -71,7 +71,7 @@
                 $testImage = $this->fromTable($tableImage->name);
                 for($i = 0; $i < count($tableImage->fields); $i++)
                 {
-                    if($testImage->HasField($tableImage->fields[$i]->name))
+                    if($testImage->hasField($tableImage->fields[$i]->name))
                     {
                         $f = $testImage->getField($tableImage->fields[$i]->name);
 
@@ -103,7 +103,7 @@
                             }
                             else
                             {
-                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type);
+                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type->value);
                             }
                         }
 
@@ -116,7 +116,7 @@
                             }
                             else
                             {
-                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type);
+                                $this->removeAutoIncrement($tableImage->name, $tableImage->fields[$i]->name, $tableImage->fields[$i]->type->value);
                                 //$this->removePrimaryKey($tableImage->name);
                             }
                         }
@@ -126,7 +126,7 @@
                 //check and add the new fields
                 for($i = 0; $i < count($tableImage->fields); $i++)
                 {
-                    if(!$currentImage->HasField($tableImage->fields[$i]->name))
+                    if(!$currentImage->hasField($tableImage->fields[$i]->name))
                     {
                         $this->createColumn($tableImage->name, $tableImage->fields[$i]);
                     }
@@ -135,7 +135,7 @@
                 //remove deprecated fields from the table
                 for($i = 0; $i < count($currentImage->fields); $i++)
                 {
-                    if(!$tableImage->HasField($currentImage->fields[$i]->name))
+                    if(!$tableImage->hasField($currentImage->fields[$i]->name))
                     {
                         $this->dropColumn($currentImage->name, $currentImage->fields[$i]->name);
                     }

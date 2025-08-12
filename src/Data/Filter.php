@@ -323,9 +323,9 @@
             {
                 for($i = 0; $i < count($list); $i++)
                 {
-                    if(isset($list[$i]->Created))
+                    if(isset($list[$i]->created))
                     {
-                        if(((new Date($list[$i]->Created))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->Created))->toEpochSeconds() <= $range->stop))
+                        if(((new Date($list[$i]->created))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
@@ -350,9 +350,9 @@
             {
                 for($i = 0; $i < count($list); $i++)
                 {
-                    if(isset($list[$i]->Modified))
+                    if(isset($list[$i]->modified))
                     {
-                        if(((new Date($list[$i]->Modified))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->Created))->toEpochSeconds() <= $range->stop))
+                        if(((new Date($list[$i]->modified))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
@@ -408,12 +408,12 @@
 
             for($i = 0; $i < count($list); $i++)
             {
-                if(isset($list[$i]->Id))
+                if(isset($list[$i]->id))
                 {
-                    if(!in_array($list[$i]->Id, $store))
+                    if(!in_array($list[$i]->id, $store))
                     {
                         $ret[] = $list[$i];
-                        $store[] = $list[$i]->Id;
+                        $store[] = $list[$i]->id;
                     }
                 }
                 else

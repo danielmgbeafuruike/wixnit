@@ -102,10 +102,10 @@
                         return $this->conn;
                     }
                 }
-                else if(getenv("WIXNIT_MYSQL_Connection_Credentials"))
+                else if(isset($GLOBALS["WIXNIT_MYSQL_Connection_Credentials"]))
                 {
                     try{
-                        $cred = json_decode(getenv("WIXNIT_MYSQL_Connection_Credentials"), true);
+                        $cred = $GLOBALS["WIXNIT_MYSQL_Connection_Credentials"];
 
                         if(is_array($cred))
                         {
