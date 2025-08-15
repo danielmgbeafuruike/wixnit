@@ -7,7 +7,7 @@
 
     class Search
     {
-        public string | array $term = null;
+        public string | array $term = "";
         public array $fields = [];
         public $minchar = null;
         public $charPosition = null;

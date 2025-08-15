@@ -39,7 +39,7 @@
             {
                 if(strpos($arg, "#", ) !== false)
                 {
-                    $this->Hex = $arg;
+                    $this->hex = $arg;
                 }
                 else
                 {
@@ -209,7 +209,7 @@
          */
         public function _serialize(): string
         {
-            return $this->ToHex();
+            return $this->toHex();
         }
 
         /**

@@ -190,7 +190,8 @@ class api
      */
     public static function ValidationError(array $errors): stdClass
     {
-        $message = "Validation failed: " . implode(", ", array_map(fn($error) => $error['message'], $errors));
+        //$message = "Validation failed" . implode(", ", array_map(fn($error) => $error['message'], $errors));
+        $message = "Validation failed";
         return self::build('validation.error', $message, HTTPResponseCode::UNPROCESSABLE_CONTENT, ['errors' => $errors]);
     }
 

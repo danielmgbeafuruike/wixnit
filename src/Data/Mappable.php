@@ -235,7 +235,7 @@
          */
         public function mapFrom($array_object, bool $map_hidden=true): void
         {
-            $properties = $this->GetMap();
+            $properties = $this->getMap();
 
 
             if(is_array($array_object))

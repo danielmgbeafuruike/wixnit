@@ -55,10 +55,28 @@
          */
         public function trimStartEnd($time=""): Timespan
         {
-            $this->TrimStart($time);
-            $this->TrimEnd($time);
+            $this->trimStart($time);
+            $this->trimEnd($time);
             return $this;
         }
+
+
+        #region private methods
+
+        private function stringToTimeSec(string $time): int
+        {
+            $val = explode(":", $time);
+
+            if(count($val) == 2)
+            {
+                return ((Convert::ToInt($val[0]) * (60 * 60)) + (Convert::ToInt($val[1]) * 60));
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        #endregion
 
 
         #region static methods
