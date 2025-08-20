@@ -44,6 +44,7 @@
                     {
                         $handler->withTranslator($this->translator);
                     }
+                    $handler->withDataRoutes($this->dataRoutes);
                     $handler->render(...$args);
                 };
             }
@@ -107,6 +108,12 @@
                 {
                     $this->handler = function(...$args) use ($instance, $handlerMethod) {
                         $instance->$handlerMethod(...$args);
+                    };
+                }
+                else if(method_exists($instance, "handle"))
+                {
+                    $this->handler = function(...$args) use ($instance) {
+                        $instance->handle(...$args);
                     };
                 }
                 else
