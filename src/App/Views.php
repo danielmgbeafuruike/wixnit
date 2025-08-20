@@ -39,11 +39,11 @@
 
             if(count($routeData) > 0)
             {
-                $ret->setRouteData($routeData);
+                $ret->setDataRoutes($routeData);
             }
             else if(count($this->routerArgs) > 0)
             {
-                $ret->setRouteData($this->routerArgs);
+                $ret->setDataRoutes($this->routerArgs);
             }
             return $ret;
         }
