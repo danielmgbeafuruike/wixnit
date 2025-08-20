@@ -86,6 +86,14 @@
          */
         public function option(Request $req, array $args=[]): void {}
 
+        /**
+         * Receive and process ANY requests
+         * @param \Wixnit\Routing\Request $req
+         * @param array $args
+         * @return void
+         */
+        public function handle(Request $req, array $args=[]): void {}
+
 
         /**
          * Close the connection and send all the data to the output and then continue processing data in the backgroundTask closure
