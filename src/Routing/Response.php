@@ -26,7 +26,7 @@
          * @param string $content
          * @return static
          */
-        public function setcontent($content): static
+        public function setContent($content): static
         {
             $this->content = $content;
             return $this;
