@@ -38,12 +38,22 @@
 
         /**
          * Add new search term and all
-         * @param mixed $search
+         * @param array | Search | SearchBuilder | null $search
          * @return void
          */
-        public function add($search)
+        public function add(array | Search | SearchBuilder | null $search)
         {
-            if(($search instanceof Search) || ($search instanceof SearchBuilder))
+            if(is_array($search))
+            {
+                for($i = 0; $i < count($search); $i++)
+                {
+                    if(($search[$i] instanceof Search) || ($search[$i] instanceof SearchBuilder))
+                    {
+                        $this->searches[] = $search[$i];
+                    }
+                }
+            }
+            else if(($search instanceof Search) || ($search instanceof SearchBuilder))
             {
                 $this->searches[] = $search;
             }

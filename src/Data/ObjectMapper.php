@@ -17,7 +17,7 @@
 
             if($template_object instanceof Mappable)
             {
-                $this->map = $template_object->GetMap();
+                $this->map = $template_object->getMap();
             }
             else
             {

@@ -14,6 +14,7 @@
     {
         private array $routes = [];
         private string $rootRoute = "";
+        private array $dataRoutes = [];
 
         /**
          * List of guards to use
@@ -70,6 +71,7 @@
                         {
                             $this->routes[$i]->useTranslator($this->translator);
                         }
+                        $this->routes[$i]->useDataRoutes(...$this->dataRoutes);
                         $ret[]= $this->routes[$i];
                     }
                     if($this->routes[$i] instanceof RouteCollection)
@@ -235,6 +237,36 @@
         public function getTranslator(): ?ITranslator
         {
             return $this->translator ?? null;
+        }
+
+        /**
+         * Set the data routes to all the routes in the collection
+         * @param array | string $data
+         * @return RouteCollection
+         */
+        public function withDataRoutes(array | string $data): RouteCollection
+        {
+            if(is_string($data))
+            {
+                $this->dataRoutes[] = $data;
+            }
+            else if(is_array($data))
+            {
+                for($i = 0; $i < count($data); $i++)
+                {
+                    $this->dataRoutes[] = $data[$i];
+                }
+            }
+            return $this;
+        }
+
+        /**
+         * Get the data routes thats used on all the routes
+         * @return array
+         */
+        public function getDataRoutes(): array
+        {
+            return $this->dataRoutes ?? [];
         }
 
 

@@ -1240,7 +1240,7 @@
                     $instanceMap = $instance->getMap();
                     $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
 
-                    $query = $query->Join($instanceMap->dbPrep(), strtolower($this->map->publicProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
+                    $query = $query->join($instanceMap->dbPrep(), strtolower($this->map->publicProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
                 }
             }
             for($i = 0; $i < count($this->map->hiddenProperties); $i++)
@@ -1253,7 +1253,7 @@
                     $instanceMap = $instance->getMap();
                     $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
 
-                    $query = $query->Join($instanceMap->dbPrep(), strtolower($this->map->hiddenProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
+                    $query = $query->join($instanceMap->dbPrep(), strtolower($this->map->hiddenProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
                 }
             }
             return $query;
@@ -1275,7 +1275,7 @@
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
 
-            return DBQuery::With(DB::Connect($config, $map))->where(["deleted"=>new greaterThan(0)])->delete();
+            return DBQuery::With(DB::Connect($config, $map))->where(["deleted"=>new GreaterThan(0)])->delete();
         }
 
         /**
@@ -1314,15 +1314,15 @@
                     {
                         $args[$i]->fields = $instance->getFields();
                     }
-                    $query = $query->Search($args[$i]);
+                    $query = $query->search($args[$i]);
                 }
                 else if ($args[$i] instanceof SearchBuilder)
                 {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                    $query = $query->search($instance->addFieldsToSearchBuilder($args[$i]));
                 }
                 else if($args[$i] instanceof Order)
                 {
-                    $query = $query->Order($args[$i]);
+                    $query = $query->order($args[$i]);
                 }
                 else if($args[$i] instanceof Span)
                 {
@@ -1350,7 +1350,15 @@
             for($i = 0; $i < count($result->data); $i++)
             {
                 $obj = $reflection->newInstance($db);
+
+                //fire object life span event
+                $obj->onCreated();
+
+                //hdrate the object
                 $obj->fromDBResult($result->data[$i]);
+
+                //fire object life span event
+                $obj->onInitialized();
 
                 $ret->list[] = $obj;
             }
@@ -1390,7 +1398,7 @@
                 if($args[$i] instanceof Timespan)
                 {
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
-                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                    $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
                 else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
                 {
@@ -1402,15 +1410,15 @@
                     {
                         $args[$i]->fields = $instance->getFields();
                     }
-                    $query = $query->Search($args[$i]);
+                    $query = $query->search($args[$i]);
                 }
                 else if ($args[$i] instanceof SearchBuilder)
                 {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                    $query = $query->search($instance->addFieldsToSearchBuilder($args[$i]));
                 }
                 else if($args[$i] instanceof Order)
                 {
-                    $query = $query->Order($args[$i]);
+                    $query = $query->order($args[$i]);
                 }
                 else if($args[$i] instanceof Span)
                 {
@@ -1468,7 +1476,7 @@
                 if($args[$i] instanceof Timespan)
                 {
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
-                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                    $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
                 else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
                 {
@@ -1480,15 +1488,15 @@
                     {
                         $args[$i]->fields = $instance->getFields();
                     }
-                    $query = $query->Search($args[$i]);
+                    $query = $query->search($args[$i]);
                 }
                 else if ($args[$i] instanceof SearchBuilder)
                 {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                    $query = $query->search($instance->addFieldsToSearchBuilder($args[$i]));
                 }
                 else if($args[$i] instanceof Order)
                 {
-                    $query = $query->Order($args[$i]);
+                    $query = $query->order($args[$i]);
                 }
                 else if($args[$i] instanceof Span)
                 {
@@ -1532,7 +1540,7 @@
                 if($args[$i] instanceof Timespan)
                 {
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
-                    $query = $query->where(['created'=>[new greaterThan($range->start, true), new lessThan($range->stop, true)]]);
+                    $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
                 else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
                 {
@@ -1544,15 +1552,15 @@
                     {
                         $args[$i]->fields = $instance->getFields();
                     }
-                    $query = $query->Search($args[$i]);
+                    $query = $query->search($args[$i]);
                 }
                 else if ($args[$i] instanceof SearchBuilder)
                 {
-                    $query = $query->Search($instance->addFieldsToSearchBuilder($args[$i]));
+                    $query = $query->search($instance->addFieldsToSearchBuilder($args[$i]));
                 }
                 else if($args[$i] instanceof Order)
                 {
-                    $query = $query->Order($args[$i]);
+                    $query = $query->order($args[$i]);
                 }
                 else if($args[$i] instanceof Span)
                 {
@@ -1619,7 +1627,7 @@
                 }
             }
 
-            if($instance->UsesSoftDelete())
+            if($instance->usesSoftDelete())
             {
                 $tm = time();
 

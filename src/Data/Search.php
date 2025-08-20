@@ -7,7 +7,7 @@
 
     class Search
     {
-        public string | array $term = null;
+        public string | array $term = "";
         public array $fields = [];
         public $minchar = null;
         public $charPosition = null;
@@ -96,7 +96,7 @@
 
             for($i = 0; $i < count($args); $i++)
             {
-                if(($args[$i] instanceof Search) ||($args[$i] instanceof SearchBuilder))
+                if(!($args[$i] instanceof FilterOperation))
                 {
                     $builder->add($args[$i]);
                 }

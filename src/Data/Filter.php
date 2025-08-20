@@ -439,7 +439,7 @@
 
             for($i = 0; $i < count($args); $i++)
             {
-                if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                if(!($args[$i] instanceof FilterOperation))
                 {
                     $builder->add($args[$i]);
                 }
