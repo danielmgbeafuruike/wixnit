@@ -8,6 +8,7 @@
     use Wixnit\Data\Pagination;
     use Wixnit\Data\SearchBuilder;
     use Wixnit\Routing\Request;
+    use Wixnit\Routing\Response;
 
     /**
      * @comment initialize requests, call appropriate methods, suppose to contain business logic
@@ -18,6 +19,16 @@
         protected ?FilterBuilder $filters = null;
         protected ?SearchBuilder $searches = null;
         protected ?Order $order = null;
+
+
+        protected Response $response;
+
+
+        function __construct()
+        {
+            $this->response = new Response();
+        }
+
 
         /**
          * Receive and process GET requests

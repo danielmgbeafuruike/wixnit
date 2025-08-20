@@ -35,12 +35,22 @@
 
         /**
          * Add filter to the filter builder
-         * @param mixed $filter
+         * @param array | Filter | FilterBuilder | null  $filter
          * @return void
          */
-        public function add(Filter | FilterBuilder $filter): void
+        public function add(array | Filter | FilterBuilder | null $filter): void
         {
-            if(($filter instanceof Filter) || ($filter instanceof FilterBuilder))
+            if(is_array($filter))
+            {
+                for($i = 0; $i < count($filter); $i++)
+                {
+                    if(($filter[$i] instanceof Filter) || ($filter[$i] instanceof FilterBuilder))
+                    {
+                        $this->filters[] = $filter[$i];
+                    }
+                }
+            }
+            else if(($filter instanceof Filter) || ($filter instanceof FilterBuilder))
             {
                 $this->filters[] = $filter;
             }

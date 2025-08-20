@@ -6,6 +6,7 @@ use DOMDocument;
 use DOMXPath;
 use Exception;
 use Wixnit\Interfaces\ITranslator;
+use Wixnit\Routing\Request;
 
 class View
 {
@@ -24,6 +25,23 @@ class View
      */
     public function render(): void
     {
+        $args = func_get_args();
+        $payload = [];
+
+        for($i = 0; $i < count($args); $i++)
+        {
+            if($args[$i] instanceof Request)
+            {
+                $payload['request'] = $args[$i];
+            }
+            if(is_array($args[$i]))
+            {
+                $payload['args'] =  $args[$i];
+            }
+        }
+        $GLOBALS['WIXNIT_VIEW_PAYLOAD'] = $payload;
+        
+
         $resolvedPath = $this->resolveFilePath();
 
         if (!file_exists($resolvedPath)) {
@@ -50,7 +68,7 @@ class View
         return $this;
     }
 
-    public function withRouteData(array $data, bool $modifyResourcesURI = false): self
+    public function withDataRoutes(array $data, bool $modifyResourcesURI = false): self
     {
         foreach ($data as $value) {
             $this->routeData[] = $value;
@@ -59,7 +77,7 @@ class View
         return $this;
     }
 
-    public function setRouteData(array $data, bool $modifyResourcesURI = false): self
+    public function setDataRoutes(array $data, bool $modifyResourcesURI = false): self
     {
         $this->routeData = array_values($data);
         $this->modifyResourcesURI = $modifyResourcesURI;

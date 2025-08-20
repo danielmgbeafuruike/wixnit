@@ -10,10 +10,7 @@
         public int $red = 0;
         public int $green = 0;
         public int $blue = 0;
-        public int $opacity = 0;
-        public int $alpha = 0;
-
-        public string $hex = "";
+        public float $opacity = 1;
 
         function __construct(mixed $arg=null)
         {
@@ -33,13 +30,17 @@
                 $this->green = isset($arg->green) ? Convert::ToInt($arg->green) : 0;
                 $this->blue = isset($arg->blue) ? Convert::ToInt($arg->blue) : 0;
                 $this->opacity = isset($arg->opacity) ? Convert::ToInt($arg->opacity) : 0;
-                $this->alpha = isset($arg->alpha) ? Convert::ToInt($arg->alpha) : 0;
             }
             else if(is_string($arg))
             {
                 if(strpos($arg, "#", ) !== false)
                 {
-                    $this->hex = $arg;
+                    $col = Color::FromHex($arg);
+
+                    $this->red = $col->red;
+                    $this->green = $col->green;
+                    $this->blue = $col->blue;
+                    $this->opacity = $col->opacity;
                 }
                 else
                 {
@@ -63,16 +64,16 @@
          */
         public function toHex(): string 
         {
-            // Ensure that the alpha value is between 0 and 1
-            $a = max(0, min(1, $this->alpha));
+            // Ensure that the opacity value is between 0 and 1
+            $o = max(0, min(1, $this->opacity));
         
             // Convert the color values to hexadecimal
             $red = str_pad(dechex($this->red), 2, "0", STR_PAD_LEFT);
             $green = str_pad(dechex($this->green), 2, "0", STR_PAD_LEFT);
             $blue = str_pad(dechex($this->blue), 2, "0", STR_PAD_LEFT);
-            $alpha = str_pad(dechex(round($a * 255)), 2, "0", STR_PAD_LEFT);
+            $opacity = str_pad(dechex(round($o * 255)), 2, "0", STR_PAD_LEFT);
         
-            return "#" . $red . $green . $blue . $alpha;
+            return "#" . $red . $green . $blue . $opacity;
         }
 
         /**
@@ -82,15 +83,25 @@
         public function toAHex(): string 
         {
             // Ensure that the alpha value is between 0 and 1
-            $a = max(0, min(1, $this->alpha));
+            $o = max(0, min(1, $this->opacity));
         
             // Convert the color values to hexadecimal
             $red = str_pad(dechex($this->red), 2, "0", STR_PAD_LEFT);
             $green = str_pad(dechex($this->green), 2, "0", STR_PAD_LEFT);
             $blue = str_pad(dechex($this->blue), 2, "0", STR_PAD_LEFT);
-            $alpha = str_pad(dechex(round($a * 255)), 2, "0", STR_PAD_LEFT);
+            $opacity = str_pad(dechex(round($o * 255)), 2, "0", STR_PAD_LEFT);
         
-            return "#" . $alpha . $red . $green . $blue;
+            return "#" . $opacity . $red . $green . $blue;
+        }
+
+        /**
+         * Get a cloned color object with opacity set opacity
+         * @param float $opacity
+         * @return Color
+         */
+        public function withOpacity(float $opacity): Color
+        {
+            return Color::FromRGBO($this->red, $this->green, $this->blue, $opacity);
         }
 
 
@@ -102,7 +113,7 @@
          * create Color object from red, green & blue values
          * @param mixed $name
          */
-        public static function FromRGBO(int $red, int $green, int $blue, int $opacity=1): Color
+        public static function FromRGBO(int $red, int $green, int $blue, float $opacity=1): Color
         {
             $ret = new Color();
             $ret->red = $red;
@@ -219,7 +230,7 @@
          */
         public function _deserialize($data): void
         {
-            $this->init();
+            $this->init($data);
         }
         #endregion
     }

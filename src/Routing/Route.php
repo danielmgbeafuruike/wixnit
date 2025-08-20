@@ -22,6 +22,7 @@
          * @var IRouteGuard[]
          */
         private array $guards = [];
+        private array $dataRoutes = [];
         private ITranslator $translator;
         private array $routedArgs = [];
 
@@ -39,6 +40,10 @@
             {
                 $this->handler = function(...$args) use ($handler) 
                 {
+                    if(isset($this->translator))
+                    {
+                        $handler->withTranslator($this->translator);
+                    }
                     $handler->render(...$args);
                 };
             }
@@ -48,7 +53,7 @@
                     if(file_exists($handler->path)) 
                     {
                         require_once ($handler->path);
-                    } 
+                    }
                     else 
                     {
                         (new Response())
@@ -193,6 +198,52 @@
         }
 
         /**
+         * Sets data routes for the route
+         * @return Route
+         */
+        public function useDataRoutes(): Route
+        {
+            $data = func_get_args();
+
+            for($i = 0; $i < count($data); $i++)
+            {
+                if(is_array($data[$i]))
+                {
+                    for($j = 0; $j < count($data[$i][$j]); $j++)
+                    {
+                        if(is_string($data[$i][$j]))
+                        {
+                            $this->dataRoutes[] = $data[$i][$j];
+                        }
+                    }
+                }
+                else if(is_string($data[$i]))
+                {
+                    $this->dataRoutes[] = $data[$i];
+                }
+            }
+            return $this;
+        }
+
+        /**
+         * Get the data routes for the route
+         * @return array
+         */
+        public function getDataRoutes(): array
+        {
+            return $this->dataRoutes;
+        }
+
+        /**
+         * Check if the route has a data route arguments
+         * @return bool
+         */
+        public function hasDataRoutes(): bool
+        {
+            return (count($this->dataRoutes) > 0);
+        }
+
+        /**
          * Check if the route matches a given path and method
          * @param string $path
          * @param \Wixnit\Enum\HTTPMethod $method
@@ -280,7 +331,21 @@
                     }
                     else
                     {
-                        $guards[$i]->onFail()->send(); 
+                        $error = $guards[$i]->onFail();
+
+                        if($error instanceof Response)
+                        {
+                            $error->send();
+                        }
+                        else if($error instanceof View)
+                        {
+                            if(isset($this->translator))
+                            {
+                                $error->withTranslator($this->translator);
+                            }
+                            $error->withDataRoutes($this->dataRoutes);
+                            $error->render($req, $payLoads);
+                        }
                         return;
                     }
                 }               

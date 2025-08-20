@@ -9,5 +9,5 @@
     {
         public function checkAccess(Request $req): bool;
 
-        public function onFail(): Response;
+        public function onFail(): Response | View;
     }
