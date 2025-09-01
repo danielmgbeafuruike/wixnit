@@ -186,14 +186,39 @@
         /**
          * get a specific session value by name, null will be returned if it does not exist
          * @param mixed $name
-         * @return mixed
+         * @return void
          */
-        public static function GetSession($name): mixed
+        public static function GetSession(string $name): mixed
         {
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
             }
             return $_SESSION[$name] ?? null;
+        }
+
+        /**
+         * Check if a session exist
+         * @param mixed $name
+         * @return void
+         */
+        public static function HasSession(string $name): bool
+        {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            return isset($_SESSION[$name]);
+        }
+
+        /**
+         * destroy the current session
+         * @return void
+         */
+        public static function DestroySession(): void
+        {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_unset();
+                session_destroy();
+            }
         }
 
         /**
