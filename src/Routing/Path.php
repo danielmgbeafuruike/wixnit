@@ -67,7 +67,7 @@
                         $extra = true;
                     }
 
-                    $ds = isset($_SERVER['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO']), "/") : explode("/", trim($_SERVER['PATH_INFO'], "/"));
+                    $ds = isset($_SERVER['ORIG_PATH_INFO']) ? explode("/", trim($_SERVER['ORIG_PATH_INFO'], "/")) : explode("/", trim($_SERVER['PATH_INFO'], "/"));
                     for($i = 0; $i < (count($ds) - 1); $i++)
                     {
                         $prepend .= "../";

@@ -29,39 +29,6 @@
 
 
         /**
-         * @comment get the IP address of the client
-         * @return string
-         */
-        public function getClientIP(): string
-        {
-            if (!empty($_SERVER['HTTP_CLIENT_IP'])) 
-            {
-                $ip = $_SERVER['HTTP_CLIENT_IP'];
-            }
-            elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) 
-            {
-                $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-                $ip = explode(',', $ip)[0];
-            }
-            else 
-            {
-                $ip = $_SERVER['REMOTE_ADDR'];
-            }
-            return trim($ip);
-        }
-
-        /**
-         * Get the server variable by name, null will be returned if it does not exist
-         * @param ServerArgs|string|null $arg
-         * @return string|array
-         */
-        public function getServer(ServerArgs | string $arg = null): string | array
-        {
-            $val = (($arg != null) ? (($arg instanceof ServerArgs) ? $arg->value : $arg) : null);
-            return ($val != null) ? $_SERVER[$val] : $_SERVER;
-        }
-
-        /**
          * Validate the request data using the provided validation arguments
          * @param array $validation_args
          * @return Validation
@@ -72,7 +39,6 @@
             $validation->addValues($validation_args);
             return $validation;
         }
-
 
         /**
          * Get the post form data as an associative array
@@ -119,11 +85,54 @@
             return $this->method;
         }
 
+
+
+
+       
+
+
+
+
+        #region static methods
+
+         /**
+         * @comment get the IP address of the client
+         * @return string
+         */
+        public static function GetClientIP(): string
+        {
+            if (!empty($_SERVER['HTTP_CLIENT_IP'])) 
+            {
+                $ip = $_SERVER['HTTP_CLIENT_IP'];
+            }
+            elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) 
+            {
+                $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+                $ip = explode(',', $ip)[0];
+            }
+            else 
+            {
+                $ip = $_SERVER['REMOTE_ADDR'];
+            }
+            return trim($ip);
+        }
+
+        /**
+         * Get the server variable by name, null will be returned if it does not exist
+         * @param ServerArgs|string|null $arg
+         * @return string|array
+         */
+        public static function GetServer(ServerArgs | string $arg = null): string | array
+        {
+            $val = (($arg != null) ? (($arg instanceof ServerArgs) ? $arg->value : $arg) : null);
+            return ($val != null) ? $_SERVER[$val] : $_SERVER;
+        }
+
         /**
          * Get the base URL of the request
          * @return string
          */
-        public function getBaseURL(): string
+        public static function GetBaseURL(): string
         {
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
             $host = $_SERVER['HTTP_HOST'];
@@ -135,16 +144,16 @@
          * Get the full URL of the request
          * @return string
          */
-        public function getFullURL(): string
+        public static function GetFullURL(): string
         {
-            return $this->getBaseURL() . $_SERVER['REQUEST_URI'];
+            return Request::GetBaseURL() . $_SERVER['REQUEST_URI'];
         }
 
         /**
          * Get the request headers as an associative array
          * @return string
          */
-        public function getRequestHeaders(): array
+        public static function GetRequestHeaders(): array
         {
             $headers = [];
             foreach ($_SERVER as $name => $value) {
@@ -160,7 +169,7 @@
          * Get the request content as a string
          * @return string
          */
-        public function getRequestBody(): string
+        public static function GetRequestBody(): string
         {
             return file_get_contents('php://input');
         }
@@ -169,7 +178,7 @@
          * Get a specific cookie value by name, null will be returned if it does not exist
          * @return string
          */
-        public function getCookie($name): ?string
+        public static function GetCookie($name): ?string
         {
             return $_COOKIE[$name] ?? null;
         }
@@ -179,7 +188,7 @@
          * @param mixed $name
          * @return mixed
          */
-        public function getSession($name): mixed
+        public static function GetSession($name): mixed
         {
             if (session_status() === PHP_SESSION_NONE) {
                 session_start();
@@ -191,7 +200,7 @@
          * get the current server info
          * @return array{document_root: string, request_time: int, script_name: string, server_addr: string, server_name: string, server_port: mixed}
          */
-        public function getServerInfo(): array
+        public static function GetServerInfo(): array
         {
             return [
                 'server_name' => $_SERVER['SERVER_NAME'] ?? '',
@@ -207,7 +216,7 @@
          * get the user agent of the request
          * @return string
          */
-        public function getUserAgent(): string
+        public static function GetUserAgent(): string
         {
             return $_SERVER['HTTP_USER_AGENT'] ?? '';
         }
@@ -216,7 +225,7 @@
          * get the referrer of the request
          * @return string
          */
-        public function getReferrer(): string
+        public static function GetReferrer(): string
         {
             return $_SERVER['HTTP_REFERER'] ?? '';
         }
@@ -225,7 +234,7 @@
          * check if the request is an AJAX request
          * @return bool
          */
-        public function isAJAXRequest(): bool
+        public static function IsAJAXRequest(): bool
         {
             return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         }
@@ -234,7 +243,7 @@
          * get the request ID, this is a unique identifier for the request
          * @return string
          */
-        public function getRequestID(): string
+        public static function GetRequestID(): string
         {
             return uniqid('req_', true);
         }
@@ -243,7 +252,7 @@
          * get the request time, this is the time when the request was made
          * @return int
          */
-        public function getRequestTime(): int
+        public static function GetRequestTime(): int
         {
             return $_SERVER['REQUEST_TIME'] ?? time();
         }
@@ -252,7 +261,7 @@
          * get the request URI
          * @return string
          */
-        public function getRequestURI(): string
+        public static function GetRequestURI(): string
         {
             return $_SERVER['REQUEST_URI'] ?? '';
         }
@@ -261,7 +270,7 @@
          * get the request scheme (http or https)
          * @return string
          */
-        public function getRequestScheme(): string
+        public static function GetRequestScheme(): string
         {
             return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
         }
@@ -270,7 +279,7 @@
          * get the request port
          * @return int
          */
-        public function getRequestPort(): int
+        public static function GetRequestPort(): int
         {
             return $_SERVER['SERVER_PORT'] ?? 80;
         }
@@ -279,7 +288,7 @@
          * get the request path
          * @return string
          */
-        public function getRequestPath(): string
+        public static function GetRequestPath(): string
         {
             return parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? '';
         }
@@ -288,7 +297,7 @@
          * get the request query string
          * @return string
          */
-        public function getRequestQuery(): string
+        public static function GetRequestQuery(): string
         {
             return parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY) ?? '';
         }
@@ -297,7 +306,7 @@
          * get the request fragment
          * @return string
          */
-        public function getRequestFragment(): string
+        public static function GetRequestFragment(): string
         {
             return parse_url($_SERVER['REQUEST_URI'], PHP_URL_FRAGMENT) ?? '';
         }
@@ -306,7 +315,7 @@
          * Get the request headers as an associative array
          * @return array
          */
-        public function getRequestHeadersAsArray(): array
+        public static function GetRequestHeadersAsArray(): array
         {
             $headers = [];
             foreach (getallheaders() as $name => $value) {
@@ -320,9 +329,9 @@
          * @param string $name
          * @return string|null
          */
-        public function getRequestHeader($name): ?string
+        public static function GetRequestHeader($name): ?string
         {
-            $headers = $this->getRequestHeadersAsArray();
+            $headers = Request::GetRequestHeadersAsArray();
             return $headers[strtolower($name)] ?? null;
         }
 
@@ -330,16 +339,16 @@
          * Get the request content type, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestContentType(): ?string
+        public static function GetRequestContentType(): ?string
         {
-            return $this->getRequestHeader('content-type');
+            return Request::GetRequestHeader('content-type');
         }
 
         /**
          * Get the request content length, null will be returned if it does not exist
          * @return int|null
          */
-        public function getRequestContentLength(): ?int
+        public static function GetRequestContentLength(): ?int
         {
             return isset($_SERVER['CONTENT_LENGTH']) ? (int)$_SERVER['CONTENT_LENGTH'] : null;
         }
@@ -348,163 +357,164 @@
          * Get the request accept header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestAccept(): ?string
+        public static function GetRequestAccept(): ?string
         {
-            return $this->getRequestHeader('accept');
+            return Request::GetRequestHeader('accept');
         }
 
         /**
          * Get the request accept language header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestAcceptLanguage(): ?string
+        public static function GetRequestAcceptLanguage(): ?string
         {
-            return $this->getRequestHeader('accept-language');
+            return Request::GetRequestHeader('accept-language');
         }
 
         /**
          * Get the request accept encoding header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestAcceptEncoding(): ?string
+        public static function GetRequestAcceptEncoding(): ?string
         {
-            return $this->getRequestHeader('accept-encoding');
+            return Request::GetRequestHeader('accept-encoding');
         }
 
         /**
          * Get the request authorization header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestAuthorization(): ?string
+        public static function GetRequestAuthorization(): ?string
         {
-            return $this->getRequestHeader('authorization');
+            return Request::GetRequestHeader('authorization');
         }
 
         /**
          * Get the request cache control header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestCacheControl(): ?string
+        public static function GetRequestCacheControl(): ?string
         {
-            return $this->getRequestHeader('cache-control');
+            return Request::GetRequestHeader('cache-control');
         }
 
         /**
          * Get the request if modified since header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestIfModifiedSince(): ?string
+        public static function GetRequestIfModifiedSince(): ?string
         {
-            return $this->getRequestHeader('if-modified-since');
+            return Request::GetRequestHeader('if-modified-since');
         }
 
         /**
          * Get the request if none match header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestIfNoneMatch(): ?string
+        public static function GetRequestIfNoneMatch(): ?string
         {
-            return $this->getRequestHeader('if-none-match');
+            return Request::GetRequestHeader('if-none-match');
         }
 
         /**
          * Get the request forwarded for header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestForwardedFor(): ?string
+        public static function GetRequestForwardedFor(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-for');
+            return Request::GetRequestHeader('x-forwarded-for');
         }
 
         /**
          * Get the request forwarded proto header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestForwardedProto(): ?string
+        public static function GetRequestForwardedProto(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-proto');
+            return Request::GetRequestHeader('x-forwarded-proto');
         }
 
         /**
          * Get the request forwarded host header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestForwardedHost(): ?string
+        public static function GetRequestForwardedHost(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-host');
+            return Request::GetRequestHeader('x-forwarded-host');
         }
 
         /**
          * Get the request forwarded port header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestForwardedPort(): ?string
+        public static function GetRequestForwardedPort(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-port');
+            return Request::GetRequestHeader('x-forwarded-port');
         }
 
         /**
          * Get the request real IP header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXRequestedWith(): ?string
+        public static function GetRequestXRequestedWith(): ?string
         {
-            return $this->getRequestHeader('x-requested-with');
+            return Request::GetRequestHeader('x-requested-with');
         }
 
         /**
          * Get the request x forwarded for header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXForwardedFor(): ?string
+        public static function GetRequestXForwardedFor(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-for');
+            return Request::GetRequestHeader('x-forwarded-for');
         }
 
         /**
          * Get the request x forwarded host header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXForwardedHost(): ?string
+        public static function GetRequestXForwardedHost(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-host');
+            return Request::GetRequestHeader('x-forwarded-host');
         }
 
         /**
          * Get the request x forwarded proto header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXForwardedProto(): ?string
+        public static function GetRequestXForwardedProto(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-proto');
+            return Request::GetRequestHeader('x-forwarded-proto');
         }
 
         /**
          * Get the request x forwarded port header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXForwardedPort(): ?string
+        public static function GetRequestXForwardedPort(): ?string
         {
-            return $this->getRequestHeader('x-forwarded-port');
+            return Request::GetRequestHeader('x-forwarded-port');
         }
 
         /**
          * Get the request x real ip header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXRealIP(): ?string
+        public static function GetRequestXRealIP(): ?string
         {
-            return $this->getRequestHeader('x-real-ip');
+            return Request::GetRequestHeader('x-real-ip');
         }
 
         /**
          * Get the request x http method override header, null will be returned if it does not exist
          * @return string|null
          */
-        public function getRequestXHTTPMethodOverride(): ?string
+        public static function GetRequestXHTTPMethodOverride(): ?string
         {
-            return $this->getRequestHeader('x-http-method-override');
+            return Request::GetRequestHeader('x-http-method-override');
         }
+        #endregion
 
 
 

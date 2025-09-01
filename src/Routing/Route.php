@@ -66,7 +66,7 @@
             }
             else 
             {
-                $ref = new \ReflectionClass($handler);
+                $ref = new ReflectionClass($handler);
                 if(!$ref->isInstantiable() && !($handler instanceof Controller))
                 {
                     throw new \InvalidArgumentException("The provided class is not instantiable.");

@@ -3,7 +3,6 @@
 namespace Wixnit\Routing;
 
 use Closure;
-use Wixnit\App\Controller;
 use Wixnit\App\View;
 use Wixnit\Enum\HTTPMethod;
 
