@@ -217,59 +217,6 @@
             }
             $_SESSION[$name] = $value;
         }
-
-
-        /**
-         * Summary of GetSession
-         * @param mixed $name
-         * @return void
-         */
-        public static function GetSession(string | null $name =null): array | string
-        {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-            if($name != null)
-            {
-                if(isset($_SESSION[$name]))
-                {
-                    return $_SESSION[$name];      
-                }
-                else
-                {
-                    return null;
-                }
-            }
-            else
-            {
-                return $_SESSION;
-            }
-        }
-
-        /**
-         * Summary of GetSession
-         * @param mixed $name
-         * @return void
-         */
-        public static function HasSession(string $name): bool
-        {
-            if (session_status() === PHP_SESSION_NONE) {
-                session_start();
-            }
-            return isset($_SESSION[$name]);
-        }
-
-        /**
-         * destroy the current session
-         * @return void
-         */
-        public static function DestroySession(): void
-        {
-            if (session_status() === PHP_SESSION_ACTIVE) {
-                session_unset();
-                session_destroy();
-            }
-        }
         #endregion
 
 
