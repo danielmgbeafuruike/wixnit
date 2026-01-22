@@ -513,6 +513,10 @@
                                     {
                                         $arrData[] = ($val[$j]->id != "") ? $val[$j]->id : (($val[$j]->getLazyLoadId() != "") ? $val[$j]->getLazyLoadId() : "");
                                     }
+                                    else if($ref->isEnum())
+                                    {
+                                        $arrData[] = $val[$j]->value;
+                                    }
                                     else
                                     {
                                         $arrData[] = json_encode($val[$j]);
@@ -810,6 +814,26 @@
                                         $a = $arr_ref->newInstance($this->db->getConnection());
                                         $a->lazyLoadId = $arr[$x];
                                         $obj[] = $a;
+                                    }
+                                    $ref->getProperty($prop->name)->setValue($this, $obj);
+                                }
+                                else if($arr_ref->isEnum())
+                                {
+                                    $obj = [];
+
+                                    for($x = 0; $x < count($arr); $x++)
+                                    {
+                                        $enumRef = new ReflectionEnum($arr_ref->getName());
+                                        $cases = $enumRef->getCases();
+
+                                        for($en = 0; $en < count($cases); $en++)
+                                        {
+                                            if($cases[$en]->getValue()->value == trim($arr[$x]))
+                                            {
+                                                $obj[] = $cases[$en]->getValue();
+                                                break;
+                                            }
+                                        }
                                     }
                                     $ref->getProperty($prop->name)->setValue($this, $obj);
                                 }
@@ -1631,13 +1655,19 @@
             {
                 $tm = time();
 
-                return DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=>$data], FilterOperation::OR))->update([
-                    "deleted"=>$tm
+                DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=> $data], FilterOperation::OR))->update([
+                    "deleted"=> $tm
                 ]);
+
+                ///TODO: return the correct db result
+                return new DBResult();
             }
             else
             {
-                return DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=>$data], FilterOperation::OR))->delete();
+                DBQuery::With(DB::Connect($db, $map))->where(new Filter([$tableName."id"=> $data], FilterOperation::OR))->delete();
+                
+                ///TODO: return the correct db result
+                return new DBResult();
             }
         }
 

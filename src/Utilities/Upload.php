@@ -8,7 +8,7 @@
 	{
 		public string $type = "";
 		public string $extension = "";
-		public int $size = 0.0;
+		public float $size = 0.0;
 		public string $name = "";
 		private string $temp = "";
 		private $file = null;
@@ -100,6 +100,7 @@
             if($newName == null)
             {
                 $newName = $this->name;
+                return $newName;
             }
             else if($this->file != null)
             {

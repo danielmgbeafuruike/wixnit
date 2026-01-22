@@ -171,7 +171,7 @@
         static function Months($months): Duration
         {
             $ret = new Duration();
-            $ret->minutes = $months;
+            $ret->months = $months;
             return $ret;
         }
 

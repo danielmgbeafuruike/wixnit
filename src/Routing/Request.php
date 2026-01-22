@@ -178,7 +178,7 @@
          * Get a specific cookie value by name, null will be returned if it does not exist
          * @return string
          */
-        public static function GetCookie($name): ?string
+        public static function GetCookie($name): string | null
         {
             return $_COOKIE[$name] ?? null;
         }
@@ -354,7 +354,7 @@
          * @param string $name
          * @return string|null
          */
-        public static function GetRequestHeader($name): ?string
+        public static function GetRequestHeader($name): string | null
         {
             $headers = Request::GetRequestHeadersAsArray();
             return $headers[strtolower($name)] ?? null;
@@ -364,7 +364,7 @@
          * Get the request content type, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestContentType(): ?string
+        public static function GetRequestContentType(): string | null
         {
             return Request::GetRequestHeader('content-type');
         }
@@ -382,7 +382,7 @@
          * Get the request accept header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestAccept(): ?string
+        public static function GetRequestAccept(): string | null
         {
             return Request::GetRequestHeader('accept');
         }
@@ -391,7 +391,7 @@
          * Get the request accept language header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestAcceptLanguage(): ?string
+        public static function GetRequestAcceptLanguage(): string | null
         {
             return Request::GetRequestHeader('accept-language');
         }
@@ -400,7 +400,7 @@
          * Get the request accept encoding header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestAcceptEncoding(): ?string
+        public static function GetRequestAcceptEncoding(): string | null
         {
             return Request::GetRequestHeader('accept-encoding');
         }
@@ -409,16 +409,41 @@
          * Get the request authorization header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestAuthorization(): ?string
+        public static function GetRequestAuthorization(): string | null
         {
-            return Request::GetRequestHeader('authorization');
+            $auth = Request::GetRequestHeader('authorization') ?? Request::GetRequestHeader('HTTP_AUTHORIZATION');
+
+            if(($auth == null) && (function_exists('apache_request_headers')))
+            {
+                $requestHeaders = apache_request_headers();
+                // Look for the Authorization header case-insensitively
+                if (isset($requestHeaders['Authorization'])) 
+                {
+                    $auth = trim($requestHeaders['Authorization']);
+                }
+            }
+            return $auth ?: null;
+        }
+
+        /**
+         * Get the Auth Bearer token in the request
+         * @return string|null
+         */
+        public static function GetBearerToken(): string | null
+        {
+            $auth = Request::GetRequestAuthorization();
+
+            if(($auth != null) && preg_match('/Bearer\s(\S+)/', $auth, $matches)) {
+                return $matches[1];
+            }
+            return null;
         }
 
         /**
          * Get the request cache control header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestCacheControl(): ?string
+        public static function GetRequestCacheControl(): string | null
         {
             return Request::GetRequestHeader('cache-control');
         }
@@ -427,7 +452,7 @@
          * Get the request if modified since header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestIfModifiedSince(): ?string
+        public static function GetRequestIfModifiedSince(): string | null
         {
             return Request::GetRequestHeader('if-modified-since');
         }
@@ -436,7 +461,7 @@
          * Get the request if none match header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestIfNoneMatch(): ?string
+        public static function GetRequestIfNoneMatch(): string | null
         {
             return Request::GetRequestHeader('if-none-match');
         }
@@ -445,7 +470,7 @@
          * Get the request forwarded for header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestForwardedFor(): ?string
+        public static function GetRequestForwardedFor(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-for');
         }
@@ -454,7 +479,7 @@
          * Get the request forwarded proto header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestForwardedProto(): ?string
+        public static function GetRequestForwardedProto(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-proto');
         }
@@ -463,7 +488,7 @@
          * Get the request forwarded host header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestForwardedHost(): ?string
+        public static function GetRequestForwardedHost(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-host');
         }
@@ -472,7 +497,7 @@
          * Get the request forwarded port header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestForwardedPort(): ?string
+        public static function GetRequestForwardedPort(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-port');
         }
@@ -481,7 +506,7 @@
          * Get the request real IP header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXRequestedWith(): ?string
+        public static function GetRequestXRequestedWith(): string | null
         {
             return Request::GetRequestHeader('x-requested-with');
         }
@@ -490,7 +515,7 @@
          * Get the request x forwarded for header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXForwardedFor(): ?string
+        public static function GetRequestXForwardedFor(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-for');
         }
@@ -499,7 +524,7 @@
          * Get the request x forwarded host header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXForwardedHost(): ?string
+        public static function GetRequestXForwardedHost(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-host');
         }
@@ -508,7 +533,7 @@
          * Get the request x forwarded proto header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXForwardedProto(): ?string
+        public static function GetRequestXForwardedProto(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-proto');
         }
@@ -517,7 +542,7 @@
          * Get the request x forwarded port header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXForwardedPort(): ?string
+        public static function GetRequestXForwardedPort(): string | null
         {
             return Request::GetRequestHeader('x-forwarded-port');
         }
@@ -526,7 +551,7 @@
          * Get the request x real ip header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXRealIP(): ?string
+        public static function GetRequestXRealIP(): string | null
         {
             return Request::GetRequestHeader('x-real-ip');
         }
@@ -535,7 +560,7 @@
          * Get the request x http method override header, null will be returned if it does not exist
          * @return string|null
          */
-        public static function GetRequestXHTTPMethodOverride(): ?string
+        public static function GetRequestXHTTPMethodOverride(): string | null
         {
             return Request::GetRequestHeader('x-http-method-override');
         }

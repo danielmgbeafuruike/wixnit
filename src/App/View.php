@@ -59,6 +59,7 @@ class View
             ob_start();
             require_once $resolvedPath;
             echo $this->preProcessContent((string) ob_get_clean());
+            ob_end_flush();
         }
     }
 

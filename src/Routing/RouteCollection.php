@@ -3,6 +3,7 @@
     namespace Wixnit\Routing;
 
     use Wixnit\Enum\HTTPMethod;
+    use Wixnit\Interfaces\IInterceptor;
     use Wixnit\Interfaces\IRouteGuard;
     use Wixnit\Interfaces\ITranslator;
 
@@ -21,7 +22,9 @@
          * @var IRouteGuard[]
          */
         private array $guards = [];
+        private array $interceptors = [];
         private ITranslator $translator;
+        private string $tag = "";
 
 
         /**
@@ -67,11 +70,19 @@
                                 $this->routes[$i]->useGuard($this->guards[$g]);
                             }
                         }
+                        if(count($this->interceptors) > 0)
+                        {
+                            for($g = 0; $g < count($this->interceptors); $g++)
+                            {
+                                $this->routes[$i]->interceptResponse($this->interceptors[$g]);
+                            }
+                        }
                         if(isset($this->translator))
                         {
                             $this->routes[$i]->useTranslator($this->translator);
                         }
                         $this->routes[$i]->useDataRoutes(...$this->dataRoutes);
+                        $this->routes[$i]->setTag($this->tag);
                         $ret[]= $this->routes[$i];
                     }
                     if($this->routes[$i] instanceof RouteCollection)
@@ -87,10 +98,19 @@
                                     $rs[$j]->useGuard($this->guards[$g]);
                                 }
                             }
+                            if(count($this->interceptors) > 0)
+                            {
+                                for($g = 0; $g < count($this->interceptors); $g++)
+                                {
+                                    $rs[$j]->interceptResponse($this->interceptors[$g]);
+                                }
+                            }
                             if(isset($this->translator))
                             {
                                 $rs[$j]->useTranslator($this->translator);
                             }
+                            $rs[$j]->useDataRoutes(...$this->dataRoutes);
+                            $rs[$j]->setTag($this->tag);
                             $ret[] = $rs[$j];
                         }
                     }
@@ -239,6 +259,29 @@
             return $this->translator ?? null;
         }
 
+
+        /**
+         * Apply a guard to all routes in the collection
+         * @param IInterceptor $interceptor
+         * @return RouteCollection
+         */
+        public function interceptResponse(IInterceptor $interceptor): RouteCollection
+        {
+            $this->interceptors[] = $interceptor;
+            return $this;
+        }
+
+
+        /**
+         * Get the guard applied to the collection
+         * @return IInterceptor|null
+         */
+        public function getInterceptors(): ?IInterceptor
+        {
+            return $this->interceptors ?? null;
+        }
+
+
         /**
          * Set the data routes to all the routes in the collection
          * @param array | string $data
@@ -268,6 +311,29 @@
         {
             return $this->dataRoutes ?? [];
         }
+
+        /**
+         * tag all the underlying routes
+         * @param string $tag
+         * @return RouteCollection
+         */
+        public function setTag(string $tag): RouteCollection
+        {
+            $this->tag = $tag;
+            return $this;
+        }
+
+
+        /**
+         * return the tag
+         * @return string
+         */
+        public function getTag(): string
+        {
+            return $this->tag;
+        }
+
+
 
 
         #region static methods

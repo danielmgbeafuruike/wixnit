@@ -8,6 +8,7 @@
     use Wixnit\App\View;
     use Wixnit\Enum\HTTPMethod;
     use Wixnit\Enum\HTTPResponseCode;
+    use Wixnit\Interfaces\IInterceptor;
     use Wixnit\Interfaces\IRouteGuard;
     use Wixnit\Interfaces\ITranslator;
 
@@ -22,9 +23,11 @@
          * @var IRouteGuard[]
          */
         private array $guards = [];
+        private array $interceptors = [];
         private array $dataRoutes = [];
         private ITranslator $translator;
         private array $routedArgs = [];
+        private string $tag = "";
 
 
         public function __construct(string $path, HTTPMethod $method, string | Closure | View | Path $handler, ?string $handlerMethod=null)
@@ -107,13 +110,13 @@
                 if(($handlerMethod != null) && method_exists($instance, $handlerMethod))
                 {
                     $this->handler = function(...$args) use ($instance, $handlerMethod) {
-                        $instance->$handlerMethod(...$args);
+                        return $instance->$handlerMethod(...$args);
                     };
                 }
                 else if(method_exists($instance, "handle"))
                 {
                     $this->handler = function(...$args) use ($instance) {
-                        $instance->handle(...$args);
+                        return $instance->handle(...$args);
                     };
                 }
                 else
@@ -174,6 +177,28 @@
         {
             return $this->guards;
         }
+
+
+        /**
+         * Set interceptors for the route to control access
+         * @param \Wixnit\Interfaces\IInterceptor $interceptor
+         * @return Route
+         */
+        public function interceptResponse(IInterceptor $interceptor): Route
+        {
+            $this->interceptors[] = $interceptor;
+            return $this;
+        }
+
+        /**
+         * get the interceptors for the route
+         * @return IInterceptor[]
+         */
+        public function getInterceptors(): array
+        {
+            return $this->interceptors;
+        }
+
 
         /**
          * Set a translator for the route to handle translations
@@ -319,7 +344,7 @@
          * @param Request $req
          * @return void
          */
-        public function execute(Request $req): void
+        public function execute(Request $req): Response | null
         {
             $payLoads = [];
 
@@ -361,6 +386,35 @@
             //add routed args
 
             // Execute the handler
-            call_user_func($this->handler, $req, $payLoads);
+            $response = call_user_func($this->handler, $req, $payLoads);
+
+            if(count($this->interceptors) > 0)
+            {
+                for($i = 0; $i < count($this->interceptors); $i++)
+                {
+                    $response = $this->interceptors[$i]->handle($response, $this->path, $this->getTag());
+                }
+            }
+            return $response;
+        }
+
+        /**
+         * Tag route to be used later to identify the route
+         * @param string $tag
+         * @return Route
+         */
+        public function tagRoute(string $tag): Route
+        {
+            $this->tag = $tag;
+            return $this;
+        }
+
+        /**
+         * get the route tag
+         * @return string | null
+         */
+        public function getTag(): string | null
+        {
+            return (($this->tag == "") ? null : $this->tag);
         }
     }
