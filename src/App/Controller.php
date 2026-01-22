@@ -3,6 +3,7 @@
     namespace Wixnit\App;
 
     use Closure;
+    use Exception;
     use Wixnit\Data\FilterBuilder;
     use Wixnit\Data\Order;
     use Wixnit\Data\Pagination;
@@ -34,65 +35,81 @@
          * Receive and process GET requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function get(Request $req, array $args=[]): void {}
+        public function get(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process DELETE request
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function delete(Request $req, array $args=[]): void {}
+        public function delete(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process POST request
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function create(Request $req, array $args=[]): void {}
+        public function create(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process PUT requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function update(Request $req, array $args=[]): void {}
+        public function update(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process PATCH requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function patch(Request $req, array $args=[]): void {}
+        public function patch(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process HEAD requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return  Response | null
          */
-        public function head(Request $req, array $args=[]): void {}
+        public function head(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process OPTION requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return Response | null
          */
-        public function option(Request $req, array $args=[]): void {}
+        public function option(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
         /**
          * Receive and process ANY requests
          * @param \Wixnit\Routing\Request $req
          * @param array $args
-         * @return void
+         * @return Response | null
          */
-        public function handle(Request $req, array $args=[]): void {}
+        public function handle(Request $req, array $args=[]): Response | null {
+            throw(new Exception("Method Not Implemented in controller"));
+        }
 
 
         /**
@@ -101,7 +118,7 @@
          * @param \Closure|null $backgroundTask
          * @return void
          */
-        protected function closeConnection(Closure $sendDataTask =null, Closure $backgroundTask = null): void
+        protected function closeConnection(Closure | null $sendDataTask =null, Closure | null $backgroundTask = null): void
         {
             // Start output buffering
             ob_start();

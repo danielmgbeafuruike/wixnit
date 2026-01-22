@@ -22,10 +22,14 @@ class Router
     private string $homePath = "";
 
 
+    private Closure | null $requestInterceptor = null;
+    private Closure | null $responseInterceptor = null;
+
+
     function __construct($path=null, $dataRoutes=null)
     {
         $this->dataRoute = (is_array($dataRoutes) ? $dataRoutes : []);
-        $this->requestURL = trim(parse_url(($path != null) ? $path : (($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? "")) ?? $_SERVER['REQUEST_URI']))['path'], "/");
+        $this->requestURL = trim(parse_url(($path != null) ? $path : (($_SERVER['ORIG_PATH_INFO'] ?? ($_SERVER['PATH_INFO'] ?? null)) ?? $_SERVER['REQUEST_URI']))['path'], "/");
         $this->requestURL = $this->stripDataPath($this->requestURL);
         $paths = explode("/", $this->requestURL);
 
@@ -274,8 +278,30 @@ class Router
                 //prepre the request object for the request
                 $req = $this->buildRequest();
 
+                //run request interceptor
+                if($this->requestInterceptor != null)
+                {
+                    $req = ($this->requestInterceptor)($req);
+                }
+
                 //execute the route
-                $routeList[$i]->execute($req);
+                $response = $routeList[$i]->execute($req);
+
+                //run post application interceptor
+                if($this->responseInterceptor != null)
+                {
+                    $response = ($this->responseInterceptor)($response, $routeList[$i]->getPath(), $routeList[$i]->getTag());
+                }
+
+                //if response is a view, render it or send the response
+                if($response instanceof Response)
+                {
+                    $response->send();
+                }
+                if($response instanceof View)
+                {
+                    $response->render();
+                }
                 return;
             }
         }
@@ -375,6 +401,26 @@ class Router
     public function setDataRoute(array $routes=[])
     {
         $this->dataRoute = $routes;
+    }
+
+    /**
+     * The method will be ran before the request is sent to the remaining of the application
+     * @param Closure $closure
+     * @return void
+     */
+    public function interceptRequest(Closure $closure)
+    {
+        $this->requestInterceptor = $closure;
+    }
+
+    /**
+     * The method will be ran after the application is ran and can be used to further process responses
+     * @param Closure $closure
+     * @return void
+     */
+    public function interceptResponse(Closure $closure)
+    {
+        $this->responseInterceptor = $closure;
     }
 
     
