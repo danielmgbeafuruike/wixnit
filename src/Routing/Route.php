@@ -378,7 +378,7 @@
                             $error->withDataRoutes($this->dataRoutes);
                             $error->render($req, $payLoads);
                         }
-                        return;
+                        return null;
                     }
                 }               
             }
@@ -403,7 +403,7 @@
          * @param string $tag
          * @return Route
          */
-        public function tagRoute(string $tag): Route
+        public function setTag(string $tag): Route
         {
             $this->tag = $tag;
             return $this;
