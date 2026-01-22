@@ -281,7 +281,7 @@ class Router
                 //run request interceptor
                 if($this->requestInterceptor != null)
                 {
-                    $req = ($this->requestInterceptor)($req);
+                    $req = ($this->requestInterceptor)($req, $routeList[$i]->getPath(), $routeList[$i]->getTag()) ?? $req;
                 }
 
                 //execute the route
@@ -290,7 +290,7 @@ class Router
                 //run post application interceptor
                 if($this->responseInterceptor != null)
                 {
-                    $response = ($this->responseInterceptor)($response, $routeList[$i]->getPath(), $routeList[$i]->getTag());
+                    $response = ($this->responseInterceptor)($response, $routeList[$i]->getPath(), $routeList[$i]->getTag()) ?? $response;
                 }
 
                 //if response is a view, render it or send the response

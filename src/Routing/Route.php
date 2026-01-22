@@ -392,7 +392,7 @@
             {
                 for($i = 0; $i < count($this->interceptors); $i++)
                 {
-                    $response = $this->interceptors[$i]->handle($response, $this->path, $this->getTag());
+                    $response = $this->interceptors[$i]->handle($response, $this->path, $this->getTag()) ?? $response;
                 }
             }
             return $response;
