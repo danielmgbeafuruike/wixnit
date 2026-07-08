@@ -135,6 +135,10 @@
                             $r->useTranslator($this->translator);
                         }
                         $r->setPath($this->rootRoute."/".trim($r->getPath(), "/"));
+                        if($r->getName() !== null)
+                        {
+                            $r->name($r->getName());
+                        }
                         $ret[]= $r;
                     }
                     if($this->routes[$i] instanceof RouteCollection)
@@ -156,6 +160,10 @@
                                 $r->useTranslator($this->translator);
                             }
                             $r->setPath($this->rootRoute."/".trim($r->getPath(), "/"));
+                            if($r->getName() !== null)
+                            {
+                                $r->name($r->getName());
+                            }
                             $ret[]= $r;
                         }
                     }

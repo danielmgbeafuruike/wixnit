@@ -33,7 +33,7 @@
 
         /**
          * Receive and process GET requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -43,7 +43,7 @@
 
         /**
          * Receive and process DELETE request
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -53,7 +53,7 @@
 
         /**
          * Receive and process POST request
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -63,7 +63,7 @@
 
         /**
          * Receive and process PUT requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -73,7 +73,7 @@
 
         /**
          * Receive and process PATCH requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -83,7 +83,7 @@
 
         /**
          * Receive and process HEAD requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return  Response | null
          */
@@ -93,7 +93,7 @@
 
         /**
          * Receive and process OPTION requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return Response | null
          */
@@ -103,7 +103,7 @@
 
         /**
          * Receive and process ANY requests
-         * @param \Wixnit\Routing\Request $req
+         * @param Request $req
          * @param array $args
          * @return Response | null
          */

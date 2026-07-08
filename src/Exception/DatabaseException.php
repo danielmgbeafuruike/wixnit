@@ -101,9 +101,89 @@
             return new self("Invalid table name: '$name'.");
         }
 
-        public static function InvalidFieldName(string $name): self
+        public static function InvalidFieldName(string $name, array $knownFields = []): self
         {
-            return new self("Invalid field name: '$name'.");
+            $suggestion = (count($knownFields) > 0)
+                ? "Known fields on this table are: ".implode(", ", $knownFields).". Check for a typo, or that the property is public and mapped on the model."
+                : "Check for a typo, and that the property is public and mapped on the model.";
+
+            return new self(
+                "Invalid field name: '{$name}'.\n".
+                "  Why: this field was used directly in a query (via a Filter key, Order, aggregate, Pluck, groupBy, increment/decrement, etc.) and doesn't match a known column.\n".
+                "  Suggestion: {$suggestion}"
+            );
+        }
+
+        public static function UnsafeIdentifier(string $identifier): self
+        {
+            return new self("Unsafe or unknown identifier used in query: '$identifier'. Column, table, and relation names must be alphanumeric (optionally 'relation.field') and must correspond to a real, known field.");
+        }
+
+        /**
+         * Builds a detailed, actionable exception for a failed prepared-statement execution:
+         * where it happened, the exact query and bound values, the raw database error, and a
+         * best-effort suggestion for how to fix it based on the shape of the error message.
+         * @param string $operation the method the failure occurred in, e.g. via __METHOD__
+         * @param string $query the SQL that was executed
+         * @param array $args the bound parameter values, in placeholder order
+         * @param string $dbError the raw error string from the database driver
+         * @param int $errno the driver's numeric error code, if available
+         * @return self
+         */
+        public static function QueryFailed(string $operation, string $query, array $args, string $dbError, int $errno = 0): self
+        {
+            $argSummary = (count($args) > 0)
+                ? implode(", ", array_map(fn($a) => is_scalar($a) ? strval($a) : gettype($a), $args))
+                : "(none)";
+
+            return new self(
+                "Query failed in {$operation}.\n".
+                "  Query: {$query}\n".
+                "  Bound values: {$argSummary}\n".
+                "  Database error: {$dbError}".(($errno != 0) ? " (errno {$errno})" : "")."\n".
+                "  Suggestion: ".self::suggestFixFor($dbError)
+            );
+        }
+
+        /**
+         * Heuristically maps a raw database error message to a plain-English suggestion,
+         * based on the most common causes seen for that class of MySQL error.
+         * @param string $dbError
+         * @return string
+         */
+        private static function suggestFixFor(string $dbError): string
+        {
+            $lower = strtolower($dbError);
+
+            if(str_contains($lower, "unknown column"))
+            {
+                return "A field name referenced in the query doesn't exist on this table. Check for typos in a Filter/Order/aggregate/Pluck/groupBy/WhereHas field name, and make sure the property is public and mapped on the model.";
+            }
+            if(str_contains($lower, "duplicate entry"))
+            {
+                return "A unique constraint was violated. Check for an existing row with the same value before inserting/updating, or catch this exception and show a friendly 'already exists' message instead.";
+            }
+            if(str_contains($lower, "foreign key constraint"))
+            {
+                return "The row being inserted/updated/deleted references (or is referenced by) another table. Make sure the related row exists first, or that dependent child rows are removed/updated before deleting the parent.";
+            }
+            if(str_contains($lower, "syntax"))
+            {
+                return "The generated SQL has invalid syntax - this usually points to a bug in how the query was built rather than bad data. Double check any raw field names passed to aggregates, Pluck, groupBy, or WhereHas.";
+            }
+            if(str_contains($lower, "doesn't have a default value") || str_contains($lower, "cannot be null"))
+            {
+                return "A required column was left out of the data passed in. Check that every NOT NULL column without a default is included in the insert/update data.";
+            }
+            if(str_contains($lower, "has gone away") || str_contains($lower, "lost connection") || str_contains($lower, "connection"))
+            {
+                return "The database connection was lost or timed out. Check the host/credentials in your DBConfig, and consider reconnecting before retrying the operation.";
+            }
+            if(str_contains($lower, "data too long"))
+            {
+                return "A value being written is longer than the column allows. Either truncate/validate the value before saving, or widen the column.";
+            }
+            return "Check the query and bound values above against your table schema. If the problem persists, log this exception's full message to see the exact statement sent to the database.";
         }
 
         public static function InvalidIndexName(string $name): self

@@ -162,4 +162,302 @@
             }
             parent::QuickSave(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
         }
+
+        /**
+         * Get the sum of a numeric field across all matching rows.
+         * @param string $field
+         * @return int|float|string|null
+         */
+        public static function Sum(string $field): int|float|string|null
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::SumValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Get the average of a numeric field across all matching rows.
+         * @param string $field
+         * @return int|float|string|null
+         */
+        public static function Average(string $field): int|float|string|null
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::AverageValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Get the minimum value of a field across all matching rows.
+         * @param string $field
+         * @return int|float|string|null
+         */
+        public static function Min(string $field): int|float|string|null
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::MinValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Get the maximum value of a field across all matching rows.
+         * @param string $field
+         * @return int|float|string|null
+         */
+        public static function Max(string $field): int|float|string|null
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::MaxValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Cheaply check whether any row matches, without counting the whole matching set.
+         * @return bool
+         */
+        public static function Exists(): bool
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::ExistsCollection(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
+        }
+
+        /**
+         * Get the first matching row hydrated as an object, or null if none match.
+         * @return static|null
+         */
+        public static function First()
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::FirstOf(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
+        }
+
+        /**
+         * Get the most recently created matching row.
+         * @return static|null
+         */
+        public static function Latest()
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::LatestOf(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
+        }
+
+        /**
+         * Get the oldest matching row.
+         * @return static|null
+         */
+        public static function Oldest()
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::OldestOf(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
+        }
+
+        /**
+         * Get a single column across all matching rows, without hydrating full objects.
+         * @param string $field
+         * @return array
+         */
+        public static function Pluck(string $field): array
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::PluckValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Count matching rows grouped by a field.
+         * @param string $field
+         * @return array
+         */
+        public static function GroupCount(string $field): array
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::GroupCountValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, ...func_get_args());
+        }
+
+        /**
+         * Atomically increment a numeric field on every matching row.
+         * @param string $field
+         * @param int|float $by
+         * @return DBResult
+         */
+        public static function Increment(string $field, int|float $by = 1): DBResult
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::IncrementValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, $by, ...func_get_args());
+        }
+
+        /**
+         * Atomically decrement a numeric field on every matching row.
+         * @param string $field
+         * @param int|float $by
+         * @return DBResult
+         */
+        public static function Decrement(string $field, int|float $by = 1): DBResult
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::DecrementValue(($dbConnection != null ? $dbConnection : new DBConfig()), $field, $by, ...func_get_args());
+        }
+
+        /**
+         * Bulk-update every matching row directly in SQL, without a fetch-then-save round trip per row.
+         * @param array $data
+         * @return DBResult
+         */
+        public static function UpdateWhere(array $data): DBResult
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::UpdateMatching(($dbConnection != null ? $dbConnection : new DBConfig()), $data, ...func_get_args());
+        }
+
+        /**
+         * Undo a soft delete on every matching row.
+         * @return DBResult
+         */
+        public static function Restore(): DBResult
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            return parent::RestoreValue(($dbConnection != null ? $dbConnection : new DBConfig()), ...func_get_args());
+        }
+
+        /**
+         * Iterate over matching rows in fixed-size pages, without loading every row into memory at once.
+         * @param int $size
+         * @param callable $callback
+         * @return void
+         */
+        public static function Chunk(int $size, callable $callback): void
+        {
+            $dbConnection = null;
+            $args = func_get_args();
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof mysqli)
+                {
+                    $dbConnection = $args[$i];
+                }
+            }
+            parent::ChunkCollection(($dbConnection != null ? $dbConnection : new DBConfig()), $size, $callback, ...func_get_args());
+        }
     }

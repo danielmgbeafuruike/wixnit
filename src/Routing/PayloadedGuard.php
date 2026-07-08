@@ -15,4 +15,20 @@
         {
             return $this->payload;
         }
+
+        public function addPayload(mixed $payload): void
+        {
+            if(is_null($this->payload))
+            {
+                $this->payload = $payload;
+            }
+            else if(is_array($this->payload))
+            {
+                $this->payload[] = $payload;
+            }
+            else
+            {
+                $this->payload = [$this->payload, $payload];
+            }
+        }
     }

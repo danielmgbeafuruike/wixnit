@@ -16,5 +16,7 @@
             "email": "danidainid@yahoo.com"
         }
     ],
-    "require": {}
+    "require": {
+        "php": "^8.1"
+    }
 }

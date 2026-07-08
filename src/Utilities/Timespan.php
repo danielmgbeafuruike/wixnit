@@ -2,15 +2,15 @@
 
     namespace Wixnit\Utilities;
 
-    use DateTime;
+    use DateTime as PHPDateTime;
     use stdClass;
 
     class Timespan extends Span
     {
         function __construct($start=null, $stop=null, $spanLastDay=false)
         {
-            $sta = ($start == null) ? new Date(0) : new Date($start);
-            $sto = ($stop == null) ? new Date(time()) : new Date($stop);
+            $sta = ($start == null) ? new DateTime(0) : new DateTime($start);
+            $sto = ($stop == null) ? new DateTime(time()) : new DateTime($stop);
 
             $this->start = $sta->toEpochSeconds();
 
@@ -93,10 +93,10 @@
 
         /**
          * create a timespan from a date
-         * @param Date $date
+         * @param DateTime $date
          * @return Timespan
          */
-        public static function FromDate(Date $date): Timespan
+        public static function FromDate(DateTime $date): Timespan
         {
             return new Timespan($date->toEpochSeconds(), $date->toEpochSeconds() + ((60 * 60) * 24));
         }
@@ -132,10 +132,10 @@
 
         /**
          * create a timespan from a DateTime object
-         * @param DateTime $dateTime
+         * @param PHPDateTime $dateTime
          * @return Timespan
          */
-        public static function FromDateTime(DateTime $dateTime): Timespan
+        public static function FromDateTime(PHPDateTime $dateTime): Timespan
         {
             return new Timespan($dateTime->getTimestamp(), $dateTime->getTimestamp() + ((60 * 60) * 24));
         }
@@ -204,7 +204,7 @@
          */
         public static function MonthSpan($from=null): Timespan
         {
-            $f = ($from == null) ? new Date(time()) : new Date($from);
+            $f = ($from == null) ? new DateTime(time()) : new DateTime($from);
             $sp = new Timespan(($f->toEpochSeconds() - ((60 * 60) * 24) * 30), $f);
             //$sp = new Timespan();
             return $sp;
@@ -216,7 +216,7 @@
          */
         public static function ThisYear($from=null): Timespan
         {
-            $f = ($from === null) ? new Date(time()) : new Date($from);
+            $f = ($from === null) ? new DateTime(time()) : new DateTime($from);
             $sp = new Timespan((strtotime("1/1/".date("d"))), $f);
             return $sp;
         }

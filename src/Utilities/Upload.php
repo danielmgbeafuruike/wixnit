@@ -80,6 +80,10 @@
             }
             if($this->file != null)
             {
+                if(!is_dir($directory))
+                {
+                    mkdir($directory, 0777, true);
+                }
                 move_uploaded_file($this->file['tmp_name'], $directory."/".$newName);
                 return $newName;
             }
@@ -95,15 +99,19 @@
          * @param string|null $newName
          * @return string|bool
          */
-        public function drop($directory, $newName): bool|string
+        public function drop($directory, $newName=null): bool|string
         {
             if($newName == null)
             {
                 $newName = $this->name;
-                return $newName;
             }
-            else if($this->file != null)
+
+            if($this->file != null)
             {
+                if(!is_dir($directory))
+                {
+                    mkdir($directory, 0777, true);
+                }
                 move_uploaded_file($this->file['tmp_name'], $directory."/".$newName);
                 return $newName;
             }

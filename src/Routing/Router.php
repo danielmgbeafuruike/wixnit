@@ -21,6 +21,11 @@ class Router
     private array $redirects = [];
     private string $homePath = "";
 
+    /**
+     * @var Route[] registry of named routes, used by Router::Url() to generate links
+     */
+    private static array $namedRoutes = [];
+
 
     private Closure | null $requestInterceptor = null;
     private Closure | null $responseInterceptor = null;
@@ -42,31 +47,38 @@ class Router
     }
 
     /**
+     * Internal helper that all HTTP-verb methods (get/post/put/...) delegate to.
+     * Builds a RouteCollection containing one Route per path given, registers it
+     * on the router, and returns it so it can be chained (->useGuard(), ->name(), etc.)
+     * @param HTTPMethod $method
+     * @param string|array $path
+     * @param string|Closure|Path|View $handler
+     * @param string|null $handlerMethod
+     * @return RouteCollection
+     */
+    private function addRoute(HTTPMethod $method, string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
+    {
+        $paths = is_array($path) ? $path : [$path];
+        $rt = new RouteCollection();
+
+        for($i = 0; $i < count($paths); $i++)
+        {
+            $rt->addRoute(new Route($paths[$i], $method, $handler, $handlerMethod));
+        }
+        $this->routes[] = $rt;
+        return $rt;
+    }
+
+    /**
      * add routes that can process request with any method
      * @param string|array $path
-     * @param string|Closure|View|Path $arg
+     * @param string|Closure|View|Path $handler
      * @param string|null $handlerMethod
      * @return RouteCollection
      */
     public function any(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::ANY, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::ANY, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::ANY, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -78,23 +90,7 @@ class Router
      */
     public function put(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::PUT, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::PUT, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::PUT, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -106,23 +102,7 @@ class Router
      */
     public function post(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::POST, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::POST, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::POST, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -134,23 +114,7 @@ class Router
      */
     public function get(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::GET, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::GET, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::GET, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -162,27 +126,11 @@ class Router
      */
     public function delete(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::DELETE, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::DELETE, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::DELETE, $path, $handler, $handlerMethod);
     }
 
     /**
-     * add routes that process requests send with DELETE method
+     * add routes that process requests send with PATCH method
      * @param string|array $path
      * @param string|\Closure|\Wixnit\Routing\Path|\Wixnit\App\View $handler
      * @param mixed $handlerMethod
@@ -190,23 +138,7 @@ class Router
      */
     public function patch(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::PATCH, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::PATCH, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::PATCH, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -218,23 +150,7 @@ class Router
      */
     public function head(string | array $path, string | Closure | Path | View $handler, ?string $handlerMethod=null): RouteCollection
     {
-        if(is_array($path))
-        {
-            $rt = new RouteCollection();
-            for($i = 0; $i < count($path); $i++)
-            {
-                $rt->addRoute(new Route($path[$i], HTTPMethod::HEAD, $handler, $handlerMethod));
-            }
-            $this->routes[] = $rt;
-            return $rt;
-        }
-        else
-        {
-            $rt = new RouteCollection();
-            $rt->addRoute(new Route($path, HTTPMethod::HEAD, $handler, $handlerMethod));
-            $this->routes[] = $rt;
-            return $rt;
-        }
+        return $this->addRoute(HTTPMethod::HEAD, $path, $handler, $handlerMethod);
     }
 
     /**
@@ -246,6 +162,22 @@ class Router
         //get the request method
         $method = Router::GetMethod();
 
+        //honor any explicit redirect() rules before attempting to match routes
+        foreach($this->redirects as $redirect)
+        {
+            if(trim($redirect["from"], "/") === $this->requestURL)
+            {
+                (new Response())->redirect($redirect["to"])->send();
+                return;
+            }
+        }
+
+        //if this is a request for the root and a home route was configured, route to it instead
+        $requestURL = $this->requestURL;
+        if(($requestURL == "") && ($this->homePath != ""))
+        {
+            $requestURL = trim($this->homePath, "/");
+        }
 
         //get all routes from their collections
         $routeList = [];
@@ -268,9 +200,11 @@ class Router
         }
 
         //loop through the routes and check if they match the request URL
+        $pathMatchedWrongMethod = false;
+
         for($i = 0; $i < count($routeList); $i++)
         {
-            if($routeList[$i]->matches($this->requestURL, $method))
+            if($routeList[$i]->matches($requestURL, $method))
             {
                 //get the routed args
                 $this->routedArgs = $routeList[$i]->getRoutedArgs();
@@ -304,6 +238,17 @@ class Router
                 }
                 return;
             }
+            else if($routeList[$i]->matchesPath($requestURL))
+            {
+                //the path exists but not for this HTTP method - remember it so we can send a 405 instead of a 404
+                $pathMatchedWrongMethod = true;
+            }
+        }
+
+        if($pathMatchedWrongMethod)
+        {
+            $this->showMethodNotAllowed();
+            return;
         }
 
         if($this->errorPagePath != "")
@@ -538,6 +483,69 @@ class Router
         }
         return "";
     }
+
+    /**
+     * Register a route under a name so it can later be resolved to a URL with Router::Url().
+     * Called automatically by Route::name(), you shouldn't need to call this directly.
+     * @param string $name
+     * @param Route $route
+     * @return void
+     */
+    public static function RegisterNamedRoute(string $name, Route $route): void
+    {
+        Router::$namedRoutes[$name] = $route;
+    }
+
+    /**
+     * Build a URL for a named route, filling in its {param} / {param:type} placeholders.
+     * Any extra values passed in $params that aren't used as path placeholders are appended as a query string.
+     *
+     * Example:
+     *  $router->get("user/{id}", UserController::class, "show")->name("user.show");
+     *  Router::Url("user.show", ["id" => 5]);              // "user/5"
+     *  Router::Url("user.show", ["id" => 5, "tab" => "x"]); // "user/5?tab=x"
+     *
+     * @param string $name
+     * @param array $params
+     * @return string
+     * @throws RouterException if no route was registered under the given name
+     */
+    public static function Url(string $name, array $params = []): string
+    {
+        if(!isset(Router::$namedRoutes[$name]))
+        {
+            throw new \Wixnit\Exception\RouterException("No route named \"".$name."\" has been registered.");
+        }
+
+        $path = Router::$namedRoutes[$name]->getPath();
+        $segments = explode("/", $path);
+        $used = [];
+
+        for($i = 0; $i < count($segments); $i++)
+        {
+            if(preg_match("/^{(.*?)}$/", $segments[$i], $m))
+            {
+                $inner = $m[1];
+                $paramName = str_contains($inner, ":") ? explode(":", $inner, 2)[0] : $inner;
+
+                if(array_key_exists($paramName, $params))
+                {
+                    $segments[$i] = rawurlencode((string) $params[$paramName]);
+                    $used[] = $paramName;
+                }
+            }
+        }
+
+        $url = implode("/", $segments);
+
+        $query = array_diff_key($params, array_flip($used));
+        if(count($query) > 0)
+        {
+            $url .= "?".http_build_query($query);
+        }
+
+        return $url;
+    }
     #endregion
 
     
@@ -557,6 +565,29 @@ class Router
                     <h1 style='color: dimgray; font-family: Arial; font-size: 3em;'>404</h1>
                     <h3 style='color: lightgray; font-family: Segoe UI; font-weight: normal;'>
                         The requested page was not found
+                    </h3>
+                </body>
+            </html>";
+    }
+
+    /**
+     * Send a 405 Method Not Allowed response - used when a route path matches
+     * but not for the HTTP method the request came in as
+     * @return void
+     */
+    private function showMethodNotAllowed()
+    {
+        http_response_code(405);
+        echo "
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Error : : Method Not Allowed</title>
+                </head>
+                <body style='text-align: center;'>
+                    <h1 style='color: dimgray; font-family: Arial; font-size: 3em;'>405</h1>
+                    <h3 style='color: lightgray; font-family: Segoe UI; font-weight: normal;'>
+                        This resource does not support the requested HTTP method
                     </h3>
                 </body>
             </html>";
@@ -672,7 +703,7 @@ class Router
     public static function IsValidMethod(string $method): bool
     {
         $pp = strtolower(trim($method));
-        return (($method == "post") || ($method == "get") || ($method == "put") || ($method == "patch") || ($method == "delete") || ($method == "option") || ($method == "head"));
+        return (($pp == "post") || ($pp == "get") || ($pp == "put") || ($pp == "patch") || ($pp == "delete") || ($pp == "option") || ($pp == "head"));
     }
 
     /**

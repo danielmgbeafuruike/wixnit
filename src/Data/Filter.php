@@ -27,6 +27,8 @@
 
                 for($i = 0; $i < count($this->keys); $i++)
                 {
+                    Identifier::assertSafe($this->keys[$i]);
+
                     $this->values[] = $parameters[$this->keys[$i]];
                     $this->parameters[] = array($this->keys[$i] => $parameters[$this->keys[$i]]);
                 }
@@ -48,6 +50,8 @@
         {
             if((is_string($key)) && (is_string($value)))
             {
+                Identifier::assertSafe($key);
+
                 $this->keys[] = $key;
                 $this->values[] = $value;
                 $this->parameters[] = array($key => $value);
@@ -116,6 +120,22 @@
                                         $ret->types[] =  is_string($this->values[$i][$g]->value[$k]) ? "s" : (is_float($this->values[$i][$g]->value[$k]) ? "d" : "i");
                                     }
                                 }
+                            }
+                            else if($this->values[$i][$g] instanceof In)
+                            {
+                                $ret->query .= $this->buildInClause($this->keys[$i], $this->values[$i][$g]->value, false, $ret);
+                            }
+                            else if($this->values[$i][$g] instanceof NotIn)
+                            {
+                                $ret->query .= $this->buildInClause($this->keys[$i], $this->values[$i][$g]->value, true, $ret);
+                            }
+                            else if($this->values[$i][$g] instanceof IsNull)
+                            {
+                                $ret->query .= $this->keys[$i]." IS NULL";
+                            }
+                            else if($this->values[$i][$g] instanceof IsNotNull)
+                            {
+                                $ret->query .= $this->keys[$i]." IS NOT NULL";
                             }
                             else if(is_object($this->values[$i][$g]) && (!($this->values[$i][$g] instanceof FieldName)) && (!($this->values[$i][$g] instanceof \UnitEnum)))
                             {
@@ -204,6 +224,22 @@
                                 }
                             }
                         }
+                        else if($this->values[$i] instanceof In)
+                        {
+                            $ret->query .= $this->buildInClause($this->keys[$i], $this->values[$i]->value, false, $ret);
+                        }
+                        else if($this->values[$i] instanceof NotIn)
+                        {
+                            $ret->query .= $this->buildInClause($this->keys[$i], $this->values[$i]->value, true, $ret);
+                        }
+                        else if($this->values[$i] instanceof IsNull)
+                        {
+                            $ret->query .= $this->keys[$i]." IS NULL";
+                        }
+                        else if($this->values[$i] instanceof IsNotNull)
+                        {
+                            $ret->query .= $this->keys[$i]." IS NOT NULL";
+                        }
                         else if(is_object($this->values[$i]) && (!($this->values[$i] instanceof FieldName)) && (!($this->values[$i] instanceof \UnitEnum)))
                         {
                             if((new ReflectionClass($this->values[$i]))->implementsInterface(ISerializable::class))
@@ -245,8 +281,69 @@
             return $ret;
         }
 
+        /**
+         * Build a "field IN (?, ?, ...)" / "field NOT IN (?, ?, ...)" clause and push
+         * its bound values/types onto the given DBSQLPrep. An empty value list renders
+         * a condition that is always false (IN) or always true (NOT IN) rather than
+         * emitting invalid SQL like "IN ()".
+         * @param string $key
+         * @param array $values
+         * @param bool $negate
+         * @param DBSQLPrep $ret
+         * @return string
+         */
+        private function buildInClause(string $key, array $values, bool $negate, DBSQLPrep $ret): string
+        {
+            if(count($values) == 0)
+            {
+                return $negate ? "1=1" : "1=0";
+            }
+
+            $placeholders = [];
+
+            for($k = 0; $k < count($values); $k++)
+            {
+                $placeholders[] = "?";
+                $ret->values[] = ($values[$k] instanceof \UnitEnum) ? self::GetEnumvalue($values[$k]) : $values[$k];
+                $ret->types[] = ($values[$k] instanceof \UnitEnum) ? self::GetEnumBackingTypeDBCharacter($values[$k]) : (is_string($values[$k]) ? "s" : (is_float($values[$k]) ? "d" : "i"));
+            }
+
+            return $key.($negate ? " NOT IN (" : " IN (").implode(", ", $placeholders).")";
+        }
+
 
         #region static methods
+
+        /**
+         * Build a Filter scoped to a joined relation (an auto-joined typed property), so
+         * callers don't need to know the internal "relation.field" aliasing rule by hand.
+         * Usage: Filter::On('wallet', ['amount' => new GreaterThan(100)])
+         * @param string $relation the related model's property name on the parent
+         * @param array $conditions field => value/operator pairs, same shape as Filter's constructor array
+         * @param mixed $set FilterOperation::AND or FilterOperation::OR to combine the conditions
+         * @return Filter
+         */
+        public static function On(string $relation, array $conditions, $set = FilterOperation::AND): Filter
+        {
+            if(trim($relation) === "")
+            {
+                throw \Wixnit\Exception\RelationException::EmptyRelationTarget("Filter::On()", "relation");
+            }
+            if(count($conditions) === 0)
+            {
+                throw \Wixnit\Exception\RelationException::NoConditionsProvided($relation);
+            }
+
+            Identifier::assertSafe($relation);
+
+            $prefixed = [];
+
+            foreach($conditions as $key => $value)
+            {
+                $prefixed[strtolower($relation).".".$key] = $value;
+            }
+            return new Filter($prefixed, $set);
+        }
 
         /**
          * Get the backing type of an enum value as a database character

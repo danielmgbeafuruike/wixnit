@@ -5,6 +5,7 @@
     use Wixnit\Enum\DBFieldType;
     use Wixnit\Enum\DBJoin;
     use Wixnit\Enum\FilterOperation;
+    use Wixnit\Enum\OrderDirection;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
     use Wixnit\Utilities\Random;
@@ -1328,7 +1329,7 @@
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
                     $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
                 {
                     $query = $query->where($args[$i]);
                 }
@@ -1424,7 +1425,7 @@
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
                     $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
                 {
                     $query = $query->where($args[$i]);
                 }
@@ -1451,9 +1452,9 @@
                 }
                 else if($args[$i] instanceof DistinctOn)
                 {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    for($d = 0; $d < count($args[$i]->fields); $d++)
                     {
-                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                        $query = $query->distinct($args[$i]->fields[$d]);
                     }
                 }
                 else if($args[$i] instanceof groupBy)
@@ -1502,7 +1503,7 @@
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
                     $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
                 {
                     $query = $query->where($args[$i]);
                 }
@@ -1529,9 +1530,9 @@
                 }
                 else if($args[$i] instanceof DistinctOn)
                 {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    for($d = 0; $d < count($args[$i]->fields); $d++)
                     {
-                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                        $query = $query->distinct($args[$i]->fields[$d]);
                     }
                 }
                 else if($args[$i] instanceof groupBy)
@@ -1566,7 +1567,7 @@
                     $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
                     $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
                 }
-                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder))
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
                 {
                     $query = $query->where($args[$i]);
                 }
@@ -1593,9 +1594,9 @@
                 }
                 else if($args[$i] instanceof DistinctOn)
                 {
-                    for($d = 0; $d < count($args[$i]->getValue()); $d++)
+                    for($d = 0; $d < count($args[$i]->fields); $d++)
                     {
-                        $query = $query->distinct($args[$i]->getValue()[$d]);
+                        $query = $query->distinct($args[$i]->fields[$d]);
                     }
                 }
                 else if($args[$i] instanceof groupBy)
@@ -1604,6 +1605,395 @@
                 }
             }
             return $instance->buildJoins($query)->count();
+        }
+
+        /**
+         * Shared arg-processing loop used by the aggregate/read-shortcut methods below.
+         * Mirrors the loop in BuildCollection()/CountCollection() so Filter, Search, Order,
+         * Span, WhereHas etc. all compose the same way across every read method.
+         * @param DBQuery $query
+         * @param array $args
+         * @param Transactable $instance
+         * @return array{0: DBQuery, 1: ?Pagination}
+         */
+        private static function applyQueryArgs(DBQuery $query, array $args, $instance): array
+        {
+            $pgn = null;
+
+            for($i = 0; $i < count($args); $i++)
+            {
+                if($args[$i] instanceof Timespan)
+                {
+                    $range = new Range(new Span($args[$i]->start, $args[$i]->stop));
+                    $query = $query->where(['created'=>[new GreaterThan($range->start, true), new LessThan($range->stop, true)]]);
+                }
+                else if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
+                {
+                    $query = $query->where($args[$i]);
+                }
+                else if($args[$i] instanceof Search)
+                {
+                    if(count($args[$i]->fields) == 0)
+                    {
+                        $args[$i]->fields = $instance->getFields();
+                    }
+                    $query = $query->search($args[$i]);
+                }
+                else if ($args[$i] instanceof SearchBuilder)
+                {
+                    $query = $query->search($instance->addFieldsToSearchBuilder($args[$i]));
+                }
+                else if($args[$i] instanceof Order)
+                {
+                    $query = $query->order($args[$i]);
+                }
+                else if($args[$i] instanceof Span)
+                {
+                    $pgn = Pagination::FromSpan((new Range(new Span($args[$i]->start, $args[$i]->stop)))->toSpan());
+                    $query = $query->limit($pgn->limit)->offset($pgn->offset);
+                }
+                else if($args[$i] instanceof DistinctOn)
+                {
+                    for($d = 0; $d < count($args[$i]->fields); $d++)
+                    {
+                        $query = $query->distinct($args[$i]->fields[$d]);
+                    }
+                }
+                else if($args[$i] instanceof groupBy)
+                {
+                    $query = $query->groupBy($args[$i]);
+                }
+            }
+            return [$query, $pgn];
+        }
+
+        /**
+         * Lighter arg-processing loop for mutation queries (UPDATE-based), where join/order/
+         * pagination/search don't apply - only conditions restricting which rows are affected.
+         * @param DBQuery $query
+         * @param array $args
+         * @return DBQuery
+         */
+        private static function applyFilterArgs(DBQuery $query, array $args): DBQuery
+        {
+            for($i = 0; $i < count($args); $i++)
+            {
+                if(($args[$i] instanceof Filter) || ($args[$i] instanceof FilterBuilder) || ($args[$i] instanceof WhereHas))
+                {
+                    $query = $query->where($args[$i]);
+                }
+            }
+            return $query;
+        }
+
+        /**
+         * Get the sum of a numeric field across all matching rows.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/Order/Span/WhereHas etc.
+         * @return int|float|string|null
+         */
+        protected static function SumValue($conn, string $field): int|float|string|null
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->aggregate("SUM", $field);
+        }
+
+        /**
+         * Get the average of a numeric field across all matching rows.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/Order/Span/WhereHas etc.
+         * @return int|float|string|null
+         */
+        protected static function AverageValue($conn, string $field): int|float|string|null
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->aggregate("AVG", $field);
+        }
+
+        /**
+         * Get the minimum value of a field across all matching rows.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/Order/Span/WhereHas etc.
+         * @return int|float|string|null
+         */
+        protected static function MinValue($conn, string $field): int|float|string|null
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->aggregate("MIN", $field);
+        }
+
+        /**
+         * Get the maximum value of a field across all matching rows.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/Order/Span/WhereHas etc.
+         * @return int|float|string|null
+         */
+        protected static function MaxValue($conn, string $field): int|float|string|null
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->aggregate("MAX", $field);
+        }
+
+        /**
+         * Cheaply check whether any row matches, without counting the whole matching set.
+         * @param mixed $conn
+         * @param mixed $ additional Filter/Search/Order/WhereHas etc.
+         * @return bool
+         */
+        protected static function ExistsCollection($conn): bool
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->exists();
+        }
+
+        /**
+         * Get the first matching row hydrated as an object, or null if none match.
+         * @param mixed $conn
+         * @param mixed $ additional Filter/Search/Order/WhereHas etc.
+         * @return static|null
+         */
+        protected static function FirstOf($conn)
+        {
+            $args = func_get_args();
+            $args[] = new Span(0, 1);
+
+            $collection = self::BuildCollection(...$args);
+
+            return ($collection->count() > 0) ? $collection->list[0] : null;
+        }
+
+        /**
+         * Get the most recently created matching row.
+         * @param mixed $conn
+         * @param mixed $ additional Filter/Search/WhereHas etc.
+         * @return static|null
+         */
+        protected static function LatestOf($conn)
+        {
+            $args = func_get_args();
+            $args[] = new Order("created", OrderDirection::DESCENDING);
+
+            return self::FirstOf(...$args);
+        }
+
+        /**
+         * Get the oldest matching row.
+         * @param mixed $conn
+         * @param mixed $ additional Filter/Search/WhereHas etc.
+         * @return static|null
+         */
+        protected static function OldestOf($conn)
+        {
+            $args = func_get_args();
+            $args[] = new Order("created", OrderDirection::ASCENDING);
+
+            return self::FirstOf(...$args);
+        }
+
+        /**
+         * Get a single column across all matching rows, without hydrating full objects.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/Order/Span/WhereHas etc.
+         * @return array
+         */
+        protected static function PluckValue($conn, string $field): array
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->pluck($field);
+        }
+
+        /**
+         * Count matching rows grouped by a field.
+         * @param mixed $conn
+         * @param string $field
+         * @param mixed $ additional Filter/Search/WhereHas etc.
+         * @return array
+         */
+        protected static function GroupCountValue($conn, string $field): array
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]);
+            list($query, $pgn) = self::applyQueryArgs($query, $args, $instance);
+
+            return $instance->buildJoins($query)->groupCount($field);
+        }
+
+        /**
+         * Atomically increment a numeric field on every matching row, avoiding the
+         * read-then-write race condition of loading, incrementing, then saving an object.
+         * @param mixed $conn
+         * @param string $field
+         * @param int|float $by
+         * @param mixed $ additional Filter/FilterBuilder/WhereHas restricting which rows are affected
+         * @return DBResult
+         */
+        protected static function IncrementValue($conn, string $field, int|float $by = 1): DBResult
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = self::applyFilterArgs(DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]), $args);
+
+            return $query->increment($field, $by);
+        }
+
+        /**
+         * Atomically decrement a numeric field on every matching row - see IncrementValue().
+         * @param mixed $conn
+         * @param string $field
+         * @param int|float $by
+         * @param mixed $ additional Filter/FilterBuilder/WhereHas restricting which rows are affected
+         * @return DBResult
+         */
+        protected static function DecrementValue($conn, string $field, int|float $by = 1): DBResult
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = self::applyFilterArgs(DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]), $args);
+
+            return $query->decrement($field, $by);
+        }
+
+        /**
+         * Bulk-update every matching row directly in SQL, without a fetch-then-save round trip
+         * per row. Only plain field=>value pairs are supported (no Filter-typed comparison values).
+         * @param mixed $conn
+         * @param array $data
+         * @param mixed $ additional Filter/FilterBuilder/WhereHas restricting which rows are affected
+         * @return DBResult
+         */
+        protected static function UpdateMatching($conn, array $data): DBResult
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = self::applyFilterArgs(DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>0]), $args);
+
+            return $query->update($data);
+        }
+
+        /**
+         * Undo a soft delete on every matching row (the counterpart to the soft-delete side of
+         * Delete()/FromDeleted()/PurgeDeleted()).
+         * @param mixed $conn
+         * @param mixed $ additional Filter/FilterBuilder/WhereHas restricting which rows are restored
+         * @return DBResult
+         */
+        protected static function RestoreValue($conn): DBResult
+        {
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $reflection = new ReflectionClass(get_called_class());
+            $instance = $reflection->newInstance($config->getConnection());
+            $map = $instance->getMap();
+
+            $args = func_get_args();
+            $query = self::applyFilterArgs(DBQuery::With(DB::Connect($config, $map->dbPrep()))->where(["deleted"=>new NotEqual(0)]), $args);
+
+            return $query->update(["deleted"=>0]);
+        }
+
+        /**
+         * Iterate over matching rows in fixed-size pages, calling $callback with a DBCollection
+         * per page, so large tables can be processed without loading every row into memory at once.
+         * @param mixed $conn
+         * @param int $size
+         * @param callable $callback
+         * @param mixed $ additional Filter/Search/Order/WhereHas etc.
+         * @return void
+         */
+        protected static function ChunkCollection($conn, int $size, callable $callback): void
+        {
+            $baseArgs = func_get_args();
+            $offset = 0;
+
+            while(true)
+            {
+                $pageArgs = $baseArgs;
+                $pageArgs[] = new Span($offset, $offset + $size);
+
+                $collection = self::BuildCollection(...$pageArgs);
+
+                if($collection->count() == 0)
+                {
+                    break;
+                }
+
+                $callback($collection);
+
+                if($collection->count() < $size)
+                {
+                    break;
+                }
+                $offset += $size;
+            }
         }
 
         /**

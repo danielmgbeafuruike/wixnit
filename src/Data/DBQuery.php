@@ -123,7 +123,7 @@
             //find all filters and add them to the operations stack
             for($i = 0; $i < count($args); $i++)
             {
-                if(($args[$i] instanceof Filter) || ($args[$i] instanceof  FilterBuilder))
+                if(($args[$i] instanceof Filter) || ($args[$i] instanceof  FilterBuilder) || ($args[$i] instanceof WhereHas))
                 {
                     $this->operations[] = $args[$i];
                 }
@@ -361,7 +361,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
-                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
                 }
             }
             else
@@ -405,7 +405,7 @@
                     if($operation->execute())
                     {
                         $result = $operation->get_result();
-                        $ret->count = $operation->num_rows();
+                        $ret->count = $operation->affected_rows;
 
                         //close the connection
                         //$this->db->db->close();
@@ -414,7 +414,7 @@
                     else
                     {
                         //throw (new Exception($operation->get_warnings()));
-                        throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
+                        throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
                     }
                 }
             }
@@ -443,7 +443,7 @@
                 if($operation->execute())
                 {
                     $result = $operation->get_result();
-                    $ret->count = $operation->num_rows();
+                    $ret->count = $operation->affected_rows;
 
                     //close the connection
                     //$this->db->db->close();
@@ -452,7 +452,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
-                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
                 }
             }
             else
@@ -557,7 +557,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
-                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
                 }
             }
             else
@@ -624,7 +624,7 @@
                 else
                 {
                     //throw (new Exception($operation->get_warnings()));
-                    throw(DatabaseException::QueryExecutionFailed($this->query, $operation->get_warnings()));
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
                 }
             }
             else
@@ -640,7 +640,238 @@
         }
 
 
+        /**
+         * Run an aggregate function (SUM, AVG, MIN, MAX) over a single field, honoring
+         * whatever where()/search()/join() clauses have already been set on the query.
+         * @param string $fn the SQL aggregate function name, e.g. "SUM", "AVG", "MIN", "MAX"
+         * @param string $field the field to aggregate - validated against the model's known fields
+         * @return int|float|string|null
+         */
+        public function aggregate(string $fn, string $field): int|float|string|null
+        {
+            Identifier::assertKnownField($field, $this->db->fields);
+
+            $this->query = "SELECT ".$fn."(".$this->db->tableName.".".strtolower($field).") FROM ".$this->db->tableName." ";
+
+            $this->executeJoins();
+            $this->executeOperations();
+            $this->prepGroupBy();
+
+            if(count($this->args) > 0)
+            {
+                $operation = $this->db->db->prepare($this->query);
+                $operation->bind_param($this->argTypes, ...$this->args);
+
+                if($operation->execute())
+                {
+                    $result = $operation->get_result();
+                    return $result->fetch_array()[0];
+                }
+                throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
+            }
+            else
+            {
+                $res = $this->db->db->query($this->query);
+                return $res->fetch_array()[0];
+            }
+        }
+
+        /**
+         * Cheaply check whether any row matches the where()/search()/join() clauses
+         * already set on the query, without counting the full matching set.
+         * @return bool
+         */
+        public function exists(): bool
+        {
+            $this->query = "SELECT 1 FROM ".$this->db->tableName." ";
+
+            $this->executeJoins();
+            $this->executeOperations();
+            $this->query .= " LIMIT 1";
+
+            if(count($this->args) > 0)
+            {
+                $operation = $this->db->db->prepare($this->query);
+                $operation->bind_param($this->argTypes, ...$this->args);
+
+                if($operation->execute())
+                {
+                    $result = $operation->get_result();
+                    return $result->num_rows > 0;
+                }
+                throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
+            }
+            else
+            {
+                $res = $this->db->db->query($this->query);
+                return $res->num_rows > 0;
+            }
+        }
+
+        /**
+         * Retrieve a single column across all matching rows, without hydrating full model objects.
+         * @param string $field the field to pluck - validated against the model's known fields
+         * @return array
+         */
+        public function pluck(string $field): array
+        {
+            Identifier::assertKnownField($field, $this->db->fields);
+
+            $this->query = "SELECT ".$this->db->tableName.".".strtolower($field)." FROM ".$this->db->tableName." ";
+
+            $this->executeJoins();
+            $this->executeOperations();
+            $this->prepGroupBy();
+            $this->executeLimitsAndOrder();
+
+            $rows = [];
+
+            if(count($this->args) > 0)
+            {
+                $operation = $this->db->db->prepare($this->query);
+                $operation->bind_param($this->argTypes, ...$this->args);
+
+                if($operation->execute())
+                {
+                    $result = $operation->get_result();
+                    $rows = $result->fetch_all(MYSQLI_ASSOC);
+                }
+                else
+                {
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
+                }
+            }
+            else
+            {
+                $res = $this->db->db->query($this->query);
+                $rows = $res->fetch_all(MYSQLI_ASSOC);
+            }
+
+            $ret = [];
+
+            for($i = 0; $i < count($rows); $i++)
+            {
+                $ret[] = array_values($rows[$i])[0];
+            }
+            return $ret;
+        }
+
+        /**
+         * Count matching rows grouped by a field, e.g. how many users per "status".
+         * @param string $field the field to group by - validated against the model's known fields
+         * @return array an associative array of [ groupValue => count ]
+         */
+        public function groupCount(string $field): array
+        {
+            Identifier::assertKnownField($field, $this->db->fields);
+
+            $col = strtolower($field);
+
+            $this->query = "SELECT ".$this->db->tableName.".".$col." AS __group_key, COUNT(1) AS __group_count FROM ".$this->db->tableName." ";
+
+            $this->executeJoins();
+            $this->executeOperations();
+
+            $this->query .= " GROUP BY ".$this->db->tableName.".".$col." ";
+
+            if(count($this->args) > 0)
+            {
+                $operation = $this->db->db->prepare($this->query);
+                $operation->bind_param($this->argTypes, ...$this->args);
+
+                if($operation->execute())
+                {
+                    $result = $operation->get_result();
+                    $rows = $result->fetch_all(MYSQLI_ASSOC);
+                }
+                else
+                {
+                    throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
+                }
+            }
+            else
+            {
+                $res = $this->db->db->query($this->query);
+                $rows = $res->fetch_all(MYSQLI_ASSOC);
+            }
+
+            $ret = [];
+
+            for($i = 0; $i < count($rows); $i++)
+            {
+                $ret[$rows[$i]['__group_key']] = (int)$rows[$i]['__group_count'];
+            }
+            return $ret;
+        }
+
+        /**
+         * Atomically increment a numeric field on every row matching the where() clauses
+         * already set on the query ("field = field + ?"), avoiding the read-then-write
+         * race condition of loading an object, incrementing a property, then saving it.
+         * @param string $field the field to increment - validated against the model's known fields
+         * @param int|float $by amount to add (pass a negative number, or use decrement(), to subtract)
+         * @param array $extra additional plain field=>value pairs to set in the same UPDATE
+         * @return DBResult
+         */
+        public function increment(string $field, int|float $by = 1, array $extra = []): DBResult
+        {
+            Identifier::assertKnownField($field, $this->db->fields);
+            return $this->incrementBy($field, $by, $extra);
+        }
+
+        /**
+         * Atomically decrement a numeric field - see increment().
+         * @param string $field the field to decrement - validated against the model's known fields
+         * @param int|float $by amount to subtract
+         * @param array $extra additional plain field=>value pairs to set in the same UPDATE
+         * @return DBResult
+         */
+        public function decrement(string $field, int|float $by = 1, array $extra = []): DBResult
+        {
+            Identifier::assertKnownField($field, $this->db->fields);
+            return $this->incrementBy($field, -$by, $extra);
+        }
+
+
         #region privately used methods
+
+        /**
+         * Shared implementation behind increment()/decrement().
+         * @param string $field
+         * @param int|float $by
+         * @param array $extra
+         * @return DBResult
+         */
+        private function incrementBy(string $field, int|float $by, array $extra): DBResult
+        {
+            $col = strtolower($field);
+
+            $set = $col."=".$col.($by >= 0 ? "+?" : "-?");
+
+            $this->args[] = abs($by);
+            $this->argTypes .= is_float($by) ? "d" : "i";
+
+            if(count($extra) > 0)
+            {
+                $set .= ", ".$this->prepUpdate($extra);
+            }
+
+            $ret = new DBResult();
+
+            $this->query = "UPDATE ".$this->db->tableName." SET ".$set." ";
+
+            $this->executeOperations();
+
+            $operation = $this->db->db->prepare($this->query);
+            $operation->bind_param($this->argTypes, ...$this->args);
+
+            if($operation->execute())
+            {
+                $ret->count = $operation->affected_rows;
+                return $ret;
+            }
+            throw(DatabaseException::QueryFailed(__METHOD__, $this->query, $this->args, $operation->error, $operation->errno));
+        }
 
         /**
          * Prepares the query and returns the fields and placeholders
@@ -702,6 +933,34 @@
 
                     $filterArgs = array_merge($filterArgs, $fP->values);
                     $filterTypes .= implode("", $fP->types);
+                }
+                else if($this->operations[$i] instanceof WhereHas)
+                {
+                    $wh = $this->operations[$i];
+
+                    //table alias for the correlated subquery - childTable/foreignKey are already
+                    //validated as safe identifiers by WhereHas's own constructor.
+                    $alias = "__wh_".preg_replace('/[^A-Za-z0-9_]/', '', $wh->childTable);
+
+                    $inner = "1=1";
+                    $innerArgs = [];
+                    $innerTypes = "";
+
+                    if($wh->condition !== null)
+                    {
+                        $cp = $wh->condition->getQuery();
+                        $inner = $cp->query;
+                        $innerArgs = $cp->values;
+                        $innerTypes = implode("", $cp->types);
+                    }
+
+                    $existsSql = "EXISTS (SELECT 1 FROM ".$wh->childTable." ".$alias.
+                        " WHERE ".$alias.".".$wh->foreignKey." = ".$this->db->tableName.".".$this->db->tableName."id".
+                        " AND (".$inner.")) ";
+
+                    $filter .= ((trim($filter) != "") ? " AND " : "").$existsSql;
+                    $filterArgs = array_merge($filterArgs, $innerArgs);
+                    $filterTypes .= $innerTypes;
                 }
             }
 

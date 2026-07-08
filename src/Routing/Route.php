@@ -28,6 +28,7 @@
         private ITranslator $translator;
         private array $routedArgs = [];
         private string $tag = "";
+        private string $name = "";
 
 
         public function __construct(string $path, HTTPMethod $method, string | Closure | View | Path $handler, ?string $handlerMethod=null)
@@ -283,40 +284,82 @@
          */
         public function matches(string $path, HTTPMethod $method): bool
         {
-            if(($method == $this->method) || ($this->method == HTTPMethod::ANY))
+            if((($method == $this->method) || ($this->method == HTTPMethod::ANY)) && $this->matchesPath($path))
             {
-                $r = explode("/", $this->path);
-                $c = explode("/", $path);
+                return true;
+            }
+            return false;
+        }
 
-                $this->routedArgs = [];
+        /**
+         * Check if this route's path pattern matches the given path, regardless of HTTP method.
+         * Used to distinguish a true 404 (no matching path) from a 405 (path matches, method doesn't).
+         * Also supports typed params, e.g. {id:int}, {slug:alpha}, {code:alnum}, {id:uuid}, {any} (default: untyped).
+         * @param string $path
+         * @return bool
+         */
+        public function matchesPath(string $path): bool
+        {
+            $patterns = [
+                "int" => '/^-?\d+$/',
+                "alpha" => '/^[a-zA-Z]+$/',
+                "alnum" => '/^[a-zA-Z0-9]+$/',
+                "slug" => '/^[a-zA-Z0-9-_]+$/',
+                "uuid" => '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/',
+            ];
 
-                for($i = 0; $i < count($r); $i++)
+            $r = explode("/", $this->path);
+            $c = explode("/", $path);
+
+            $routedArgs = [];
+
+            for($i = 0; $i < count($r); $i++)
+            {
+                if(count($c) > $i)
                 {
-                    if(count($c) > $i)
+                    $segment = trim($r[$i]);
+
+                    if($segment == "{*}")
                     {
-                        if(trim($r[$i]) == "{*}")
+                        $this->routedArgs = $routedArgs;
+                        return true;
+                    }
+                    else if(preg_match("/^{(.*?)}$/", $segment, $m))
+                    {
+                        $inner = $m[1];
+
+                        if(str_contains($inner, ":"))
                         {
-                            return true;
+                            [$name, $type] = array_map('trim', explode(":", $inner, 2));
+                            $type = strtolower($type);
+
+                            if(isset($patterns[$type]) && !preg_match($patterns[$type], $c[$i]))
+                            {
+                                return false;
+                            }
+
+                            $routedArgs[$name] = ($type == "int") ? (int) $c[$i] : $c[$i];
                         }
-                        else if(preg_match("/{.*?}/", $r[$i]))
+                        else
                         {
-                            $this->routedArgs[trim($r[$i], "{}")] = $c[$i];
-                        }
-                        else if($r[$i] != $c[$i])
-                        {
-                            return false;
+                            $routedArgs[$inner] = $c[$i];
                         }
                     }
-                    else
+                    else if($r[$i] != $c[$i])
                     {
                         return false;
                     }
                 }
-
-                if(count($r) == count($c))
+                else
                 {
-                    return true;
+                    return false;
                 }
+            }
+
+            if(count($r) == count($c))
+            {
+                $this->routedArgs = $routedArgs;
+                return true;
             }
             return false;
         }
@@ -358,7 +401,16 @@
                     {
                         if($guards[$i] instanceof PayloadedGuard)
                         {
-                            $payLoads[] = $guards[$i]->getPaylaod();
+                            $pLoads = $guards[$i]->getPaylaod();
+
+                            if(is_array($pLoads))
+                            {
+                                $payLoads = array_merge($pLoads, $payLoads);
+                            }
+                            else
+                            {
+                                $payLoads[] = $pLoads;
+                            }
                         }
                     }
                     else
@@ -396,6 +448,27 @@
                 }
             }
             return $response;
+        }
+
+        /**
+         * Give the route a unique name so it can be resolved to a URL later with Router::url()
+         * @param string $name
+         * @return Route
+         */
+        public function name(string $name): Route
+        {
+            $this->name = $name;
+            Router::RegisterNamedRoute($name, $this);
+            return $this;
+        }
+
+        /**
+         * Get the route's name
+         * @return string|null
+         */
+        public function getName(): ?string
+        {
+            return (($this->name == "") ? null : $this->name);
         }
 
         /**
