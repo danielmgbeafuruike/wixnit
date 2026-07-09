@@ -8,20 +8,20 @@
     use Wixnit\Enum\OrderDirection;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
+    use Wixnit\Utilities\DateTime;
     use Wixnit\Utilities\Random;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
-    use Wixnit\Utilities\Date;
     use ReflectionClass;
     use ReflectionEnum;
 
     abstract class Transactable extends Mappable
     {
         public string $id = "";
-        public Date $created;
-        public Date $modified;
-        public Date $deleted;
+        public DateTime $created;
+        public DateTime $modified;
+        public DateTime $deleted;
 
         protected bool $useSoftDelete = false;
         protected bool $forceAutoGenId = true;
@@ -80,12 +80,12 @@
             $this->onPreSave();
 
             $id = $this->id;
-            $this->modified = new Date(time());
+            $this->modified = new DateTime(time());
 
             if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
             {
                 //set the last modified date
-                $this->modified = new Date(time());
+                $this->modified = new DateTime(time());
 
                 DBQuery::With(DB::Connect($this->db, $this->tableName))
                     ->where([$this->idName=>$id])
@@ -127,7 +127,7 @@
             if($this->useSoftDelete)
             {
                 //set the objects delete time
-                $this->deleted = new Date(time());
+                $this->deleted = new DateTime(time());
 
                 //remove from general access
                 DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$this->id])->update([
@@ -435,7 +435,7 @@
                     $fieldProp->length = 100;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "Date")
+                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "DateTime")
                 {
                     $fieldProp->type = DBFieldType::INT;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
