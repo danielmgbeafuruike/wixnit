@@ -8,11 +8,11 @@
     use Wixnit\Enum\OrderDirection;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
-    use Wixnit\Utilities\DateTime;
     use Wixnit\Utilities\Random;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
+    use Wixnit\Utilities\DateTime;
     use ReflectionClass;
     use ReflectionEnum;
 
@@ -65,6 +65,7 @@
             $this->idName = strtolower($this->tableName."id");
 
             $this->initializeObject($arg);
+            $this->bindRelationCollections();
 
             //call on created event handler
             $this->onCreated();
@@ -144,9 +145,42 @@
         }
 
         /**
+         * Forces one or more #[HasMany] relations to load right now, on this one instance,
+         * regardless of which loading flavor they normally use - a relation deferred with
+         * Without(), or a HasManyCollection that's still lazy, both resolve the same way
+         * through this single method.
+         * @param string ...$relations relation property names, e.g. hydrate('orders', 'reviews')
+         * @return static
+         */
+        public function hydrate(string ...$relations): static
+        {
+            self::assertKnownRelations($relations, []);
+            self::loadRelations([$this], $relations, []);
+            return $this;
+        }
+
+        /**
          * Get DB image of the transactable
          * @return DBTable
          */
+        /**
+         * @param string $propertyName
+         * @return BelongsTo|null the #[BelongsTo] attribute instance on this property, if any
+         */
+        private function getBelongsToAttribute(string $propertyName): ?BelongsTo
+        {
+            $reflection = new ReflectionClass($this);
+
+            if(!$reflection->hasProperty($propertyName))
+            {
+                return null;
+            }
+
+            $attributes = $reflection->getProperty($propertyName)->getAttributes(BelongsTo::class);
+
+            return (count($attributes) > 0) ? $attributes[0]->newInstance() : null;
+        }
+
         public function getDBImage(): DBTable
         {
             $map = $this->getMap();
@@ -198,12 +232,26 @@
                 if(!$this->isExcluded($prop->name) && (strtolower($prop->name) != "id") &&
                     (strtolower($prop->name) != strtolower($map->name)."id") &&
                     (strtolower($prop->name) != "created") && (strtolower($prop->name) != "modified") &&
-                    (strtolower($prop->name) != "deleted"))
+                    (strtolower($prop->name) != "deleted") &&
+                    (RelationMap::get(get_called_class(), $prop->name) === null))
                 {
                     $fieldProp = new DBTableField();
                     $fieldProp->name = strtolower($prop->baseName);
 
-                    if($prop->isArray)
+                    $belongsTo = $this->getBelongsToAttribute($prop->name);
+
+                    if($belongsTo !== null)
+                    {
+                        //a #[BelongsTo] foreign key column - always a VARCHAR(64) business
+                        //id (matching every model's own {table}id column), indexed so the
+                        //owning HasMany relation can query it efficiently, and explicitly
+                        //never unique - many children legitimately share one parent.
+                        $fieldProp->type = DBFieldType::VARCHAR;
+                        $fieldProp->length = 64;
+                        $fieldProp->isIndex = true;
+                        $fieldProp->isUnique = false;
+                    }
+                    else if($prop->isArray)
                     {
                         $fieldProp->type = DBFieldType::LONG_TEXT;
                         $fieldProp->isUnique = ((in_array($prop->name, $this->unique)) || (in_array(strtolower($prop->name), $this->unique)));
@@ -435,7 +483,7 @@
                     $fieldProp->length = 100;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "DateTime")
+                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "Date")
                 {
                     $fieldProp->type = DBFieldType::INT;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
@@ -464,6 +512,13 @@
             {
                 $prop = $this->map->publicProperties[$i];
                 $name = $prop->name;
+
+                if(RelationMap::get(get_called_class(), $name) !== null)
+                {
+                    //a #[HasMany] relation (either flavor) has no column of its own on this
+                    //table - it's backed by a foreign key on the related model instead.
+                    continue;
+                }
 
                 if((strtolower($name) != $this->tableName."id") && (strtolower($name) != "id"))
                 {
@@ -1321,6 +1376,8 @@
             $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))
             ->where(["deleted"=>0]);
             $pgn = null;
+            $forceOn = [];
+            $forceOff = [];
 
             for($i = 0; $i < count($args); $i++)
             {
@@ -1365,7 +1422,16 @@
                 {
                     $query = $query->groupBy($args[$i]);
                 }
+                else if($args[$i] instanceof With)
+                {
+                    $forceOn = array_merge($forceOn, $args[$i]->relations);
+                }
+                else if($args[$i] instanceof Without)
+                {
+                    $forceOff = array_merge($forceOff, $args[$i]->relations);
+                }
             }
+            self::assertKnownRelations($forceOn, $forceOff);
             $result = $instance->buildJoins($query)->get();
 
 
@@ -1395,6 +1461,9 @@
             {
                 $ret->meta = DBCollectionMeta::FromPagination($result->count, $pgn);
             }
+
+            self::loadRelations($ret->list, $forceOn, $forceOff);
+
             return $ret;
         }
 
@@ -1416,6 +1485,8 @@
             $args = func_get_args();
             $query = DBQuery::With(DB::Connect($config, $map->dbPrep()))
                 ->where(["deleted"=>new notEqual(0)]);
+            $forceOn = [];
+            $forceOff = [];
 
 
             for($i = 0; $i < count($args); $i++)
@@ -1461,7 +1532,16 @@
                 {
                     $query = $query->groupBy($args[$i]);
                 }
+                else if($args[$i] instanceof With)
+                {
+                    $forceOn = array_merge($forceOn, $args[$i]->relations);
+                }
+                else if($args[$i] instanceof Without)
+                {
+                    $forceOff = array_merge($forceOff, $args[$i]->relations);
+                }
             }
+            self::assertKnownRelations($forceOn, $forceOff);
             $result = $instance->buildJoins($query)->get();
 
 
@@ -1476,6 +1556,9 @@
                 $ret->list[] = $obj;
                 $ret->totalRowCount = $result->count;
             }
+
+            self::loadRelations($ret->list, $forceOn, $forceOff);
+
             return $ret;
         }
 
@@ -1616,6 +1699,132 @@
          * @param Transactable $instance
          * @return array{0: DBQuery, 1: ?Pagination}
          */
+        /**
+         * Batched relation loader shared by BuildCollection()/FromDeleted()/hydrate(): for
+         * every #[HasMany] relation on this model, decides whether it should load for this
+         * call (its own default, unless overridden by $forceOn/$forceOff), and if so, loads
+         * it for every instance given in ONE query per relation - not one query per instance.
+         * @param array $instances the already-hydrated parent objects to populate relations on
+         * @param array $forceOn relation names that must load regardless of their own default
+         * @param array $forceOff relation names that must NOT load regardless of their own default
+         * @return void
+         */
+        private static function loadRelations(array $instances, array $forceOn = [], array $forceOff = []): void
+        {
+            if(count($instances) == 0)
+            {
+                return;
+            }
+
+            $relations = RelationMap::forClass(get_called_class());
+
+            if(count($relations) == 0)
+            {
+                return;
+            }
+
+            foreach($relations as $relation)
+            {
+                $shouldLoad = in_array($relation->propertyName, $forceOn, true)
+                    ? true
+                    : (in_array($relation->propertyName, $forceOff, true) ? false : ($relation->kind === "array"));
+
+                if(!$shouldLoad)
+                {
+                    continue;
+                }
+
+                $ids = [];
+
+                foreach($instances as $instance)
+                {
+                    $value = self::relationLocalValue($instance, $relation);
+
+                    if(($value !== null) && ($value !== ""))
+                    {
+                        $ids[] = $value;
+                    }
+                }
+                $ids = array_values(array_unique($ids));
+
+                $grouped = [];
+
+                if(count($ids) > 0)
+                {
+                    $relatedClass = $relation->related;
+                    $items = $relatedClass::Get(new Filter([$relation->foreignKey => new In(...$ids)]));
+
+                    foreach($items as $item)
+                    {
+                        $fkValue = $item->{$relation->foreignKey};
+                        $grouped[$fkValue][] = $item;
+                    }
+                }
+
+                foreach($instances as $instance)
+                {
+                    $value = self::relationLocalValue($instance, $relation);
+                    self::applyRelationResult($instance, $relation, $grouped[$value] ?? []);
+                }
+            }
+        }
+
+        /**
+         * @param Transactable $instance
+         * @param RelationDefinition $relation
+         * @return string
+         */
+        private static function relationLocalValue(Transactable $instance, RelationDefinition $relation): string
+        {
+            $key = $relation->localKey;
+            return ($key === null) ? $instance->id : $instance->$key;
+        }
+
+        /**
+         * @param Transactable $instance
+         * @param RelationDefinition $relation
+         * @param array $items
+         * @return void
+         */
+        private static function applyRelationResult(Transactable $instance, RelationDefinition $relation, array $items): void
+        {
+            $name = $relation->propertyName;
+
+            if($relation->kind === "array")
+            {
+                $instance->$name = $items;
+            }
+            else
+            {
+                $instance->$name->primeWith($items);
+            }
+        }
+
+        /**
+         * @param array $forceOn relation names passed to With()
+         * @param array $forceOff relation names passed to Without()
+         * @return void
+         */
+        private static function assertKnownRelations(array $forceOn, array $forceOff): void
+        {
+            $known = RelationMap::names(get_called_class());
+
+            foreach($forceOn as $name)
+            {
+                if(!in_array($name, $known, true))
+                {
+                    throw \Wixnit\Exception\RelationException::UnknownRelation(get_called_class(), $name, "With()");
+                }
+            }
+            foreach($forceOff as $name)
+            {
+                if(!in_array($name, $known, true))
+                {
+                    throw \Wixnit\Exception\RelationException::UnknownRelation(get_called_class(), $name, "Without()");
+                }
+            }
+        }
+
         private static function applyQueryArgs(DBQuery $query, array $args, $instance): array
         {
             $pgn = null;
@@ -2144,6 +2353,28 @@
         }
 
         /**
+         * Binds every HasManyCollection-typed relation property to a fresh collection tied
+         * to this instance. Runs once, at the end of construction, after the object's id is
+         * in its final state (whether that's blank for a new object or populated by
+         * fromDBResult() for an existing one) - safe to call unconditionally since
+         * HasManyCollection reads the parent's id lazily, not at binding time.
+         * @return void
+         */
+        private function bindRelationCollections(): void
+        {
+            $relations = RelationMap::forClass(get_called_class());
+
+            foreach($relations as $definition)
+            {
+                if($definition->kind === "collection")
+                {
+                    $name = $definition->propertyName;
+                    $this->$name = new HasManyCollection($this, $definition);
+                }
+            }
+        }
+
+        /**
          * Initialize the transactable object with data from the db
          * @return void
          */
@@ -2157,7 +2388,13 @@
 
                 if((!isset($this->$name)) && (strtolower($name) != $this->idName))
                 {
-                    if(($this->map->publicProperties[$i]->isArray) || ($this->map->publicProperties[$i]->type == "array"))
+                    if($this->map->publicProperties[$i]->type === HasManyCollection::class)
+                    {
+                        //bound properly (with the parent + relation metadata it actually
+                        //needs) by bindRelationCollections(), called once the object is
+                        //otherwise fully constructed - left untouched here.
+                    }
+                    else if(($this->map->publicProperties[$i]->isArray) || ($this->map->publicProperties[$i]->type == "array"))
                     {
                         $this->$name = [];
                     }

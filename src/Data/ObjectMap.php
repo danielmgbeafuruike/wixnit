@@ -9,6 +9,24 @@
         public array $hiddenProperties = [];
 
         /**
+         * deep-copy the property lists on clone, so a cloned ObjectMap doesn't share its
+         * ObjectProperty instances with the original (used by Mappable's map cache, so a
+         * caller mutating a property it got back can never corrupt the cached copy)
+         * @return void
+         */
+        public function __clone(): void
+        {
+            for($i = 0; $i < count($this->publicProperties); $i++)
+            {
+                $this->publicProperties[$i] = clone $this->publicProperties[$i];
+            }
+            for($i = 0; $i < count($this->hiddenProperties); $i++)
+            {
+                $this->hiddenProperties[$i] = clone $this->hiddenProperties[$i];
+            }
+        }
+
+        /**
          * Convert the ObjectMap to a format suitable for database preparation.
          * This will convert the properties to a format that can be used in a database.
          * @return ObjectMap

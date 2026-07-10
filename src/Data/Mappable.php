@@ -16,6 +16,26 @@
         protected array $hidden = [];
         protected array $hiddenProperties = [];
 
+        /**
+         * per-class cache of computed ObjectMaps, keyed by class name. getMap() re-derives
+         * a class's entire property/type/join layout via Reflection on every call - for
+         * something instantiated once per row when hydrating query results, that adds up
+         * fast. This assumes $excludes/$includes/$propertyTypes/$mappingIndex/$hidden are
+         * fixed, class-level configuration (the normal, intended way to use them - declared
+         * once in the class body) rather than mutated per-instance at runtime; see
+         * $disableMapCache below if a class genuinely needs the latter.
+         * @var array<string, ObjectMap>
+         */
+        private static array $mapCache = [];
+
+        /**
+         * set this to true in a subclass to opt this class out of map caching - only needed
+         * if that class computes $excludes/$includes/$propertyTypes/$mappingIndex/$hidden
+         * differently per-instance rather than as fixed configuration (uncommon)
+         * @var bool
+         */
+        protected bool $disableMapCache = false;
+
 
         function __construct()
         {
@@ -27,11 +47,40 @@
         }
 
         /**
+         * forget cached ObjectMap(s), forcing the next getMap() call to recompute via
+         * Reflection. Mainly useful for tests that redefine a class's mapping configuration
+         * at runtime, or long-running processes (queue workers, etc) where a class's mapping
+         * could plausibly change without the process restarting.
+         * @param string|null $class clear a single class's cached map; clears every cached map if omitted
+         * @return void
+         */
+        public static function ClearMapCache(?string $class = null): void
+        {
+            if($class === null)
+            {
+                Mappable::$mapCache = [];
+            }
+            else
+            {
+                unset(Mappable::$mapCache[$class]);
+            }
+        }
+
+        /**
          * Get the map of the object
          * @return ObjectMap
          */
         public function getMap(): ObjectMap
         {
+            $cacheKey = get_called_class();
+
+            if((!$this->disableMapCache) && isset(Mappable::$mapCache[$cacheKey]))
+            {
+                //hand back a clone, never the cached instance itself - so a caller mutating
+                //the ObjectMap or its properties can never corrupt what's cached
+                return clone Mappable::$mapCache[$cacheKey];
+            }
+
             $ret = new ObjectMap();
             $ret->name = get_called_class();
 
@@ -106,6 +155,12 @@
                     }
                     $ret->hiddenProperties[] = $prop;
                 }
+            }
+
+            if(!$this->disableMapCache)
+            {
+                Mappable::$mapCache[$cacheKey] = $ret;
+                return clone $ret;
             }
             return $ret;
         }

@@ -94,6 +94,19 @@
                             }
                         }
 
+                        //check for a plain (non-unique) index - e.g. a #[BelongsTo] foreign key column
+                        if((!$tableImage->fields[$i]->isUnique) && ($f->isIndex != $tableImage->fields[$i]->isIndex))
+                        {
+                            if($tableImage->fields[$i]->isIndex)
+                            {
+                                $this->addIndex($tableImage->name, $tableImage->fields[$i]->name);
+                            }
+                            else
+                            {
+                                $this->removeIndex($tableImage->name, $tableImage->fields[$i]->name);
+                            }
+                        }
+
                         //check auto incrementing field
                         if($f->autoIncrement != $tableImage->fields[$i]->autoIncrement)
                         {
@@ -265,6 +278,29 @@
         public function addUniqueIndex(string $tableName, string $columnName)
         {
             $this->db->query("ALTER TABLE ".$tableName." ADD UNIQUE(".$columnName.")");
+        }
+
+        /**
+         * @param string $tableName
+         * @param string $columnName
+         * @return void
+         * @comment set a column on the table as indexed (not unique - a plain lookup index,
+         *          used for foreign key columns declared via #[BelongsTo])
+         */
+        public function addIndex(string $tableName, string $columnName)
+        {
+            $this->db->query("ALTER TABLE ".$tableName." ADD INDEX (".$columnName.")");
+        }
+
+        /**
+         * @param string $tableName
+         * @param string $columnName
+         * @return void
+         * @comment remove a plain (non-unique) index from a column on the table
+         */
+        public function removeIndex(string $tableName, string $columnName)
+        {
+            $this->db->query("ALTER TABLE ".$tableName." DROP INDEX ".$columnName);
         }
 
         /**

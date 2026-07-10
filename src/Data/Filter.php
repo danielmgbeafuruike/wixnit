@@ -7,7 +7,7 @@
     use Wixnit\Enum\DBFieldType;
     use Wixnit\Enum\FilterOperation;
     use Wixnit\Interfaces\ISerializable;
-    use Wixnit\Utilities\DateTime;
+    use Wixnit\Utilities\Date;
     use Wixnit\Utilities\Range;
     use Wixnit\Utilities\Span;
     use Wixnit\Utilities\Timespan;
@@ -422,7 +422,7 @@
                 {
                     if(isset($list[$i]->created))
                     {
-                        if(((new DateTime($list[$i]->created))->toEpochSeconds() >= $range->start) && ((new DateTime($list[$i]->created))->toEpochSeconds() <= $range->stop))
+                        if(((new Date($list[$i]->created))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
@@ -449,7 +449,7 @@
                 {
                     if(isset($list[$i]->modified))
                     {
-                        if(((new DateTime($list[$i]->modified))->toEpochSeconds() >= $range->start) && ((new DateTime($list[$i]->created))->toEpochSeconds() <= $range->stop))
+                        if(((new Date($list[$i]->modified))->toEpochSeconds() >= $range->start) && ((new Date($list[$i]->created))->toEpochSeconds() <= $range->stop))
                         {
                             $ret[] = $list[$i];
                         }
