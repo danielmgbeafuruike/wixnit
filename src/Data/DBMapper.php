@@ -203,7 +203,7 @@
         /**
          * @param string $tableName
          * @param string $columnName
-         * @param string $type
+         * @param string $columnType
          * @return void
          * @comment remove auto increment directive from a column on the table
          */
