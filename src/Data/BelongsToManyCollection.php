@@ -2,6 +2,7 @@
 
     namespace Wixnit\Data;
 
+    use JsonSerializable;
     use Wixnit\Exception\RelationException;
     use Wixnit\Exception\DatabaseException;
 
@@ -21,7 +22,7 @@
      *   $post->tags->detach($tag);      // DELETE the pivot row
      *   $post->tags->sync([$a, $b]);    // replace the full set
      */
-    class BelongsToManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate
+    class BelongsToManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, JsonSerializable
     {
         private Transactable $parent;
         private RelationDefinition $definition;
@@ -369,5 +370,10 @@
         private function localValue(): string
         {
             return $this->parent->id;
+        }
+
+        public function jsonSerialize(): array
+        {
+            return $this->items ?? [];
         }
     }
