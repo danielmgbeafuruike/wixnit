@@ -238,10 +238,13 @@
             putenv('Wixnit-Global-Headers='. json_encode($prep));
         }
 
-        public static function SetGlobalCorsHeaders(string $allow="*", array $methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']): void
+        public static function SetGlobalCorsHeaders(string $allow="*", array $methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], array $headers=["X-Requested-With", "content-Type", "Authorization"]): void
         {
             header("Access-Control-Allow-Origin: $allow");
-            header("Access-Control-Allow-Headers: X-Requested-With, content-Type, Authorization");
+            if (!empty($headers)) 
+            {
+                header("Access-Control-Allow-Headers: ".implode(", ", $headers));
+            }
             header("Access-Control-Max-Age: 86400");
 
             if (!empty($methods)) {
