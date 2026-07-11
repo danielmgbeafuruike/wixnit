@@ -36,5 +36,32 @@
 
             $mapper = new DBMapper($this->db);
             $mapper->toTable($instance->getDBImage());
+
+            $this->mapPivotTables($reflect->getName());
+        }
+
+        /**
+         * Ensures the junction table for every #[BelongsToMany] relation declared on this
+         * class exists. Unlike a model's own table, a pivot table isn't diffed column by
+         * column against its previous shape - it's a fixed two-column shape by
+         * construction, so a single idempotent CREATE TABLE IF NOT EXISTS is enough. Both
+         * sides of a relation declare the same pivot table, so this runs safely (and
+         * harmlessly) whichever side gets migrated first, or both.
+         * @param string $class
+         * @return void
+         */
+        private function mapPivotTables(string $class): void
+        {
+            foreach(RelationMap::pivotRelations($class) as $relation)
+            {
+                $sql = "CREATE TABLE IF NOT EXISTS ".$relation->pivotTable." (".
+                    $relation->pivotLocalKey." VARCHAR(64) NOT NULL, ".
+                    $relation->pivotRelatedKey." VARCHAR(64) NOT NULL, ".
+                    "PRIMARY KEY (".$relation->pivotLocalKey.", ".$relation->pivotRelatedKey."), ".
+                    "INDEX (".$relation->pivotRelatedKey.")".
+                    ")";
+
+                $this->db->query($sql);
+            }
         }
     }

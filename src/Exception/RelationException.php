@@ -157,4 +157,48 @@
                 "  Suggestion: {$suggestion}"
             );
         }
+
+        /**
+         * @param string $class the model with the conflicting property
+         * @param string $property the property name
+         * @return self
+         */
+        public static function MultipleRelationAttributes(string $class, string $property): self
+        {
+            return new self(
+                "{$class}::\${$property} carries more than one of #[HasMany]/#[BelongsToMany]/#[HasManyThrough].\n".
+                "  Why: a single property can only describe one relation.\n".
+                "  Fix: keep exactly one relation attribute on {$class}::\${$property}."
+            );
+        }
+
+        /**
+         * @param string $class the model declaring #[BelongsToMany]
+         * @param string $property the property name
+         * @param string $key the key both localKey and relatedKey were set to
+         * @return self
+         */
+        public static function PivotKeysMustDiffer(string $class, string $property, string $key): self
+        {
+            return new self(
+                "#[BelongsToMany] on {$class}::\${$property} has localKey and relatedKey both set to '{$key}'.\n".
+                "  Why: the pivot table needs two distinct columns, one per side of the relation - using the same name for both can't distinguish them.\n".
+                "  Fix: give localKey and relatedKey different column names, e.g. 'postid' and 'tagid'."
+            );
+        }
+
+        /**
+         * @param string $class the model declaring #[HasManyThrough]
+         * @param string $property the property name
+         * @param string $actualType the property's actual declared type
+         * @return self
+         */
+        public static function InvalidHasManyThroughPropertyType(string $class, string $property, string $actualType): self
+        {
+            return new self(
+                "#[HasManyThrough] on {$class}::\${$property} is on a property typed '{$actualType}'.\n".
+                "  Why: HasManyThrough relations are always eager, plain arrays - there's no lazy flavor for through-relations yet.\n".
+                "  Fix: change {$class}::\${$property}'s type to 'array'."
+            );
+        }
     }

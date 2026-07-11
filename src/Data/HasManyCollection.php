@@ -2,6 +2,7 @@
 
     namespace Wixnit\Data;
 
+    use JsonSerializable;
     use Wixnit\Utilities\Span;
     use Wixnit\Exception\RelationException;
 
@@ -23,7 +24,7 @@
      *   $user->reviews->all();         // explicit, opt-in full materialization
      *   $user->reviews->add($review);  // sets the foreign key on $review and saves it
      */
-    class HasManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate
+    class HasManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, JsonSerializable
     {
         private Transactable $parent;
         private RelationDefinition $definition;
@@ -48,7 +49,7 @@
             if(!$this->loaded)
             {
                 $related = $this->definition->related;
-                $result = $related::Get(new Filter([$this->definition->foreignKey => $this->localValue()]));
+                $result = $related::Get($this->parent->getConnection(), new Filter([$this->definition->foreignKey => $this->localValue()]));
                 $this->items = $result->list;
                 $this->loaded = true;
             }
@@ -127,7 +128,7 @@
                 return count($this->items);
             }
             $related = $this->definition->related;
-            return $related::Count(new Filter([$this->definition->foreignKey => $this->localValue()]));
+            return $related::Count($this->parent->getConnection(), new Filter([$this->definition->foreignKey => $this->localValue()]));
         }
 
         public function offsetExists(mixed $offset): bool
@@ -199,6 +200,7 @@
             while(true)
             {
                 $page = $related::Get(
+                    $this->parent->getConnection(),
                     new Filter([$this->definition->foreignKey => $this->localValue()]),
                     new Span($offset, $offset + $this->streamPageSize - 1)
                 );
@@ -223,6 +225,7 @@
         {
             $related = $this->definition->related;
             $page = $related::Get(
+                $this->parent->getConnection(),
                 new Filter([$this->definition->foreignKey => $this->localValue()]),
                 new Span($offset, $offset)
             );
@@ -233,5 +236,10 @@
         {
             $key = $this->definition->localKey;
             return ($key === null) ? $this->parent->id : $this->parent->$key;
+        }
+
+        public function jsonSerialize(): array
+        {
+            return $this->items ?? [];
         }
     }

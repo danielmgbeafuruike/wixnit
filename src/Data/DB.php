@@ -24,9 +24,21 @@
 
             if($table_name instanceof ObjectMap)
             {
+                //#[HasMany] relation properties (either flavor) have no real column - they're
+                //backed by a foreign key on a different table entirely - so they must never
+                //end up in the SELECT field list, the same way toDBObject()/getDBImage()
+                //already exclude them from writes and schema.
+                $relationNames = class_exists($table_name->name) ? array_map('strtolower', RelationMap::names($table_name->name)) : [];
+
                 for($i = 0; $i < count($table_name->publicProperties); $i++)
                 {
-                    $ret->fields[] = $table_name->publicProperties[$i]->baseName;
+                    $prop = $table_name->publicProperties[$i];
+
+                    if(in_array(strtolower($prop->name), $relationNames, true) || in_array(strtolower($prop->baseName), $relationNames, true))
+                    {
+                        continue;
+                    }
+                    $ret->fields[] = $prop->baseName;
                 }
                 for($i = 0; $i < count($table_name->hiddenProperties); $i++)
                 {

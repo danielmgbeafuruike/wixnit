@@ -27,28 +27,62 @@
         }
 
         /**
+         * per-class-name cache of already-"db prepped" maps, so the id-renaming and cloning
+         * below only happens once per class rather than on every join/query built with it.
+         * Safe to key purely by name: every dbPrep() call in this codebase is made on a map
+         * that came from Mappable::getMap(), whose property list is fixed per class (see the
+         * caching note there) - so a given $name always produces the same prepped result.
+         * @var array<string, ObjectMap>
+         */
+        private static array $dbPrepCache = [];
+
+        /**
          * Convert the ObjectMap to a format suitable for database preparation.
          * This will convert the properties to a format that can be used in a database.
+         * Renames the "id" property to "{ClassName}id" so it doesn't collide with the
+         * owning table's own "id" column once this map is used as a join.
          * @return ObjectMap
          */
         public function dbPrep(): ObjectMap
         {
-            $r = json_decode(json_encode($this));
-
-            for($i = 0; $i < count($r->publicProperties); $i++)
+            if(isset(ObjectMap::$dbPrepCache[$this->name]))
             {
-                if(strtolower($r->publicProperties[$i]->name) == "id")
+                //hand back a clone, never the cached instance itself - same reasoning as
+                //Mappable::getMap()'s cache: callers must never be able to mutate what's cached
+                return clone ObjectMap::$dbPrepCache[$this->name];
+            }
+
+            $ret = clone $this; // deep copy (via __clone() above) - no JSON round-trip needed
+            $idName = strtolower(array_reverse(explode("\\", $this->name))[0])."id";
+
+            for($i = 0; $i < count($ret->publicProperties); $i++)
+            {
+                if(strtolower($ret->publicProperties[$i]->name) == "id")
                 {
-                    $r->publicProperties[$i]->name = ucwords(strtolower(array_reverse(explode("\\", $this->name))[0]."id"));
-                    $r->publicProperties[$i]->baseName = strtolower(array_reverse(explode("\\", $this->name))[0]."id");
+                    $ret->publicProperties[$i]->name = ucwords($idName);
+                    $ret->publicProperties[$i]->baseName = $idName;
                 }
             }
 
-            $ret = new ObjectMap();
-            $ret->name = $r->name;
-            $ret->publicProperties = $r->publicProperties;
-            $ret->hiddenProperties = $r->hiddenProperties;
-            return  $ret;
+            ObjectMap::$dbPrepCache[$this->name] = $ret;
+            return clone $ret;
+        }
+
+        /**
+         * forget cached dbPrep() result(s), forcing the next call to recompute.
+         * @param string|null $name clear a single class name's cached result; clears everything if omitted
+         * @return void
+         */
+        public static function ClearDBPrepCache(?string $name = null): void
+        {
+            if($name === null)
+            {
+                ObjectMap::$dbPrepCache = [];
+            }
+            else
+            {
+                unset(ObjectMap::$dbPrepCache[$name]);
+            }
         }
 
         /**

@@ -59,10 +59,12 @@
             if($class === null)
             {
                 Mappable::$mapCache = [];
+                ObjectMap::ClearDBPrepCache();
             }
             else
             {
                 unset(Mappable::$mapCache[$class]);
+                ObjectMap::ClearDBPrepCache($class);
             }
         }
 

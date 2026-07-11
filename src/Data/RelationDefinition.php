@@ -3,29 +3,36 @@
     namespace Wixnit\Data;
 
     /**
-     * Resolved metadata for one #[HasMany] relation on a model, built once per class by
-     * RelationMap and reused from then on - see RelationMap for how these get built and
-     * validated.
+     * Resolved metadata for one declared relation on a model, built once per class by
+     * RelationMap and reused from then on. Covers all three relation kinds - which
+     * fields are populated depends on $relationType:
+     *
+     *   "hasMany"        - $related, $foreignKey, $localKey
+     *   "belongsToMany"  - $related, $pivotTable, $pivotLocalKey, $pivotRelatedKey
+     *   "hasManyThrough" - $related, $throughClass, $throughLocalKey, $throughRelatedKey
+     *
+     * $kind ("array" or "collection") applies to hasMany and belongsToMany - it's the
+     * property's own declared type (array = eager by default, a *Collection class =
+     * lazy by default). hasManyThrough is always "array" (eager, batched) for now.
      */
     class RelationDefinition
     {
         public string $propertyName;
         public string $related;
-        public string $foreignKey;
-        public ?string $localKey;
-
-        /**
-         * "array" - eager by default, plain array once loaded.
-         * "collection" - lazy by default, HasManyCollection once loaded.
-         */
         public string $kind;
+        public string $relationType;
 
-        function __construct(string $propertyName, string $related, string $foreignKey, ?string $localKey, string $kind)
-        {
-            $this->propertyName = $propertyName;
-            $this->related = $related;
-            $this->foreignKey = $foreignKey;
-            $this->localKey = $localKey;
-            $this->kind = $kind;
-        }
+        //hasMany
+        public ?string $foreignKey = null;
+        public ?string $localKey = null;
+
+        //belongsToMany
+        public ?string $pivotTable = null;
+        public ?string $pivotLocalKey = null;
+        public ?string $pivotRelatedKey = null;
+
+        //hasManyThrough
+        public ?string $throughClass = null;
+        public ?string $throughLocalKey = null;
+        public ?string $throughRelatedKey = null;
     }

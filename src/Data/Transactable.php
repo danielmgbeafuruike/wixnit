@@ -6,6 +6,7 @@
     use Wixnit\Enum\DBJoin;
     use Wixnit\Enum\FilterOperation;
     use Wixnit\Enum\OrderDirection;
+    use Wixnit\Exception\DatabaseException;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
     use Wixnit\Utilities\Random;
@@ -1147,6 +1148,16 @@
         }
 
         /**
+         * @return \mysqli the live database connection this object was loaded/saved through -
+         *                  used by HasManyCollection, which can't reach the protected $db
+         *                  property directly since it isn't a Transactable subclass itself.
+         */
+        public function getConnection(): \mysqli
+        {
+            return $this->db->getConnection();
+        }
+
+        /**
          * Summary of getFields
          * @return string[]
          */
@@ -1701,9 +1712,10 @@
          */
         /**
          * Batched relation loader shared by BuildCollection()/FromDeleted()/hydrate(): for
-         * every #[HasMany] relation on this model, decides whether it should load for this
-         * call (its own default, unless overridden by $forceOn/$forceOff), and if so, loads
-         * it for every instance given in ONE query per relation - not one query per instance.
+         * every relation on this model (#[HasMany], #[BelongsToMany], #[HasManyThrough]),
+         * decides whether it should load for this call (its own default, unless overridden
+         * by $forceOn/$forceOff), and if so, loads it for every instance given in a small,
+         * fixed number of queries - not one query per instance.
          * @param array $instances the already-hydrated parent objects to populate relations on
          * @param array $forceOn relation names that must load regardless of their own default
          * @param array $forceOff relation names that must NOT load regardless of their own default
@@ -1723,6 +1735,8 @@
                 return;
             }
 
+            $connection = $instances[0]->db->getConnection();
+
             foreach($relations as $relation)
             {
                 $shouldLoad = in_array($relation->propertyName, $forceOn, true)
@@ -1734,39 +1748,226 @@
                     continue;
                 }
 
-                $ids = [];
-
-                foreach($instances as $instance)
+                if($relation->relationType === "hasMany")
                 {
-                    $value = self::relationLocalValue($instance, $relation);
-
-                    if(($value !== null) && ($value !== ""))
-                    {
-                        $ids[] = $value;
-                    }
+                    self::loadHasMany($instances, $relation, $connection);
                 }
-                $ids = array_values(array_unique($ids));
-
-                $grouped = [];
-
-                if(count($ids) > 0)
+                else if($relation->relationType === "belongsToMany")
                 {
-                    $relatedClass = $relation->related;
-                    $items = $relatedClass::Get(new Filter([$relation->foreignKey => new In(...$ids)]));
-
-                    foreach($items as $item)
-                    {
-                        $fkValue = $item->{$relation->foreignKey};
-                        $grouped[$fkValue][] = $item;
-                    }
+                    self::loadBelongsToMany($instances, $relation, $connection);
                 }
-
-                foreach($instances as $instance)
+                else if($relation->relationType === "hasManyThrough")
                 {
-                    $value = self::relationLocalValue($instance, $relation);
-                    self::applyRelationResult($instance, $relation, $grouped[$value] ?? []);
+                    self::loadHasManyThrough($instances, $relation, $connection);
                 }
             }
+        }
+
+        /**
+         * Batched hydration for a #[HasMany] relation: one query for all matching children
+         * across the whole page of parents, grouped by foreign key in PHP.
+         * @param array $instances
+         * @param RelationDefinition $relation
+         * @param \mysqli $connection
+         * @return void
+         */
+        private static function loadHasMany(array $instances, RelationDefinition $relation, \mysqli $connection): void
+        {
+            $ids = self::collectLocalValues($instances, $relation);
+            $grouped = [];
+
+            if(count($ids) > 0)
+            {
+                $relatedClass = $relation->related;
+                $items = $relatedClass::Get($connection, new Filter([$relation->foreignKey => new In(...$ids)]));
+
+                foreach($items as $item)
+                {
+                    $grouped[$item->{$relation->foreignKey}][] = $item;
+                }
+            }
+
+            foreach($instances as $instance)
+            {
+                $value = self::relationLocalValue($instance, $relation);
+                self::applyRelationResult($instance, $relation, $grouped[$value] ?? []);
+            }
+        }
+
+        /**
+         * Batched hydration for a #[BelongsToMany] relation: one query against the pivot
+         * table for every parent's pivot rows, one query for every distinct related row
+         * those pivot rows point at, then distributed in PHP - 2 queries total for this
+         * relation across the whole page, on top of the query that fetched the parents.
+         * @param array $instances
+         * @param RelationDefinition $relation
+         * @param \mysqli $connection
+         * @return void
+         */
+        private static function loadBelongsToMany(array $instances, RelationDefinition $relation, \mysqli $connection): void
+        {
+            $ids = array_map(fn($instance) => $instance->id, $instances);
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => ($v !== null) && ($v !== ""))));
+
+            $pivotRows = (count($ids) > 0) ? self::fetchPivotRows($relation, $ids, $connection) : [];
+
+            $relatedIds = array_values(array_unique(array_map(fn($row) => $row[$relation->pivotRelatedKey], $pivotRows)));
+            $relatedById = [];
+
+            if(count($relatedIds) > 0)
+            {
+                $relatedClass = $relation->related;
+                $idColumn = self::idColumnFor($relatedClass);
+                $relatedItems = $relatedClass::Get($connection, new Filter([$idColumn => new In(...$relatedIds)]));
+
+                foreach($relatedItems as $item)
+                {
+                    $relatedById[$item->id] = $item;
+                }
+            }
+
+            $grouped = [];
+
+            foreach($pivotRows as $row)
+            {
+                $localValue = $row[$relation->pivotLocalKey];
+                $relatedValue = $row[$relation->pivotRelatedKey];
+
+                if(isset($relatedById[$relatedValue]))
+                {
+                    $grouped[$localValue][] = $relatedById[$relatedValue];
+                }
+            }
+
+            foreach($instances as $instance)
+            {
+                self::applyRelationResult($instance, $relation, $grouped[$instance->id] ?? []);
+            }
+        }
+
+        /**
+         * Batched hydration for a #[HasManyThrough] relation: one query against the pivot
+         * model for every parent's pivot rows, one query for every distinct related row
+         * those pivot rows point at, then distributed in PHP.
+         * @param array $instances
+         * @param RelationDefinition $relation
+         * @param \mysqli $connection
+         * @return void
+         */
+        private static function loadHasManyThrough(array $instances, RelationDefinition $relation, \mysqli $connection): void
+        {
+            $ids = array_map(fn($instance) => $instance->id, $instances);
+            $ids = array_values(array_unique(array_filter($ids, fn($v) => ($v !== null) && ($v !== ""))));
+
+            $pivotItems = [];
+
+            if(count($ids) > 0)
+            {
+                $throughClass = $relation->throughClass;
+                $pivotItems = $throughClass::Get($connection, new Filter([$relation->throughLocalKey => new In(...$ids)]))->list;
+            }
+
+            $relatedIds = array_values(array_unique(array_map(fn($p) => $p->{$relation->throughRelatedKey}, $pivotItems)));
+            $relatedById = [];
+
+            if(count($relatedIds) > 0)
+            {
+                $relatedClass = $relation->related;
+                $idColumn = self::idColumnFor($relatedClass);
+                $relatedItems = $relatedClass::Get($connection, new Filter([$idColumn => new In(...$relatedIds)]));
+
+                foreach($relatedItems as $item)
+                {
+                    $relatedById[$item->id] = $item;
+                }
+            }
+
+            $grouped = [];
+
+            foreach($pivotItems as $pivotItem)
+            {
+                $localValue = $pivotItem->{$relation->throughLocalKey};
+                $relatedValue = $pivotItem->{$relation->throughRelatedKey};
+
+                if(isset($relatedById[$relatedValue]))
+                {
+                    $grouped[$localValue][] = $relatedById[$relatedValue];
+                }
+            }
+
+            foreach($instances as $instance)
+            {
+                self::applyRelationResult($instance, $relation, $grouped[$instance->id] ?? []);
+            }
+        }
+
+        /**
+         * @param RelationDefinition $relation
+         * @param array $localIds
+         * @param \mysqli $connection
+         * @return array raw associative rows from the pivot table, keyed by column name
+         */
+        private static function fetchPivotRows(RelationDefinition $relation, array $localIds, \mysqli $connection): array
+        {
+            $placeholders = implode(", ", array_fill(0, count($localIds), "?"));
+            $types = str_repeat("s", count($localIds));
+
+            $sql = "SELECT ".$relation->pivotLocalKey.", ".$relation->pivotRelatedKey.
+                " FROM ".$relation->pivotTable." WHERE ".$relation->pivotLocalKey." IN (".$placeholders.")";
+
+            $stmt = $connection->prepare($sql);
+
+            if($stmt === false)
+            {
+                throw DatabaseException::QueryFailed(__METHOD__, $sql, $localIds, $connection->error, $connection->errno);
+            }
+
+            $stmt->bind_param($types, ...$localIds);
+
+            if(!$stmt->execute())
+            {
+                throw DatabaseException::QueryFailed(__METHOD__, $sql, $localIds, $stmt->error, $stmt->errno);
+            }
+
+            $result = $stmt->get_result();
+            $rows = [];
+
+            while($row = $result->fetch_assoc())
+            {
+                $rows[] = $row;
+            }
+            return $rows;
+        }
+
+        /**
+         * @param string $class
+         * @return string the {table}id business-id column name for a model class, without
+         *                  needing to instantiate it
+         */
+        private static function idColumnFor(string $class): string
+        {
+            return strtolower(array_reverse(explode("\\", $class))[0])."id";
+        }
+
+        /**
+         * @param array $instances
+         * @param RelationDefinition $relation
+         * @return array unique, non-empty local key values across every instance
+         */
+        private static function collectLocalValues(array $instances, RelationDefinition $relation): array
+        {
+            $ids = [];
+
+            foreach($instances as $instance)
+            {
+                $value = self::relationLocalValue($instance, $relation);
+
+                if(($value !== null) && ($value !== ""))
+                {
+                    $ids[] = $value;
+                }
+            }
+            return array_values(array_unique($ids));
         }
 
         /**
@@ -2366,11 +2567,16 @@
 
             foreach($relations as $definition)
             {
-                if($definition->kind === "collection")
+                if($definition->kind !== "collection")
                 {
-                    $name = $definition->propertyName;
-                    $this->$name = new HasManyCollection($this, $definition);
+                    continue;
                 }
+
+                $name = $definition->propertyName;
+
+                $this->$name = ($definition->relationType === "belongsToMany")
+                    ? new BelongsToManyCollection($this, $definition)
+                    : new HasManyCollection($this, $definition);
             }
         }
 
@@ -2388,7 +2594,7 @@
 
                 if((!isset($this->$name)) && (strtolower($name) != $this->idName))
                 {
-                    if($this->map->publicProperties[$i]->type === HasManyCollection::class)
+                    if(($this->map->publicProperties[$i]->type === HasManyCollection::class) || ($this->map->publicProperties[$i]->type === BelongsToManyCollection::class))
                     {
                         //bound properly (with the parent + relation metadata it actually
                         //needs) by bindRelationCollections(), called once the object is
