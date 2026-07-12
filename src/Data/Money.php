@@ -1,6 +1,6 @@
 <?php
 
-    namespace Wixnit\Utilities;
+    namespace Wixnit\Data;
 
     use JsonSerializable;
     use Stringable;
