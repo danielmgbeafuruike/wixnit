@@ -37,7 +37,11 @@
          */
         private function init($arg=null)
         {
-            if(is_int($arg))
+            if($arg === null)
+            {
+                $this->value = time();
+            }
+            else if(is_int($arg))
             {
                 $this->value = $arg;
             }
