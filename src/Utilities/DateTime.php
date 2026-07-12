@@ -9,7 +9,8 @@
      * Represents a specific point in time (a date AND a time of day), stored internally
      * as epoch seconds. This is what used to be the `Date` class - if you're looking for
      * a date-only value with no time-of-day component (e.g. a birthday, a due date), see
-     * the separate, lighter-weight `Date` class instead.
+     * the separate, lighter-weight `Date` class instead. For a time-of-day with no date,
+     * see `Time` — toTime()/Date::at() convert between the two.
      */
     class DateTime implements ISerializable
     {
@@ -60,7 +61,7 @@
             $this->day = (int) date("d", $this->value);
             $this->month = (int) date("m", $this->value);
             $this->year = (int) date("Y", $this->value);
-            $this->hour = (int) date("h", $this->value);
+            $this->hour = (int) date("H", $this->value);
             $this->minute = (int) date("i", $this->value);
             $this->second = (int) date("s", $this->value);
             $this->weekDay = date("D", $this->value);
@@ -95,44 +96,60 @@
             return new Date($this->value);
         }
 
+        /**
+         * pull out just the time-of-day component (drops the calendar date)
+         * @return Time
+         */
+        public function toTime(): Time
+        {
+            return new Time($this);
+        }
+
 
         #region fluent modification methods
 
         /**
-         * add (or, with a negative number, subtract) a number of days to this date time, in place
+         * get a new DateTime with (or, with a negative number, subtract) a number of days added
          * @param int $days
          * @return static
          */
         public function addDays(int $days): static
         {
-            $this->init($this->value + ($days * 86400));
-            return $this;
+            return new static($this->value + ($days * 86400));
         }
 
         /**
-         * add (or, with a negative number, subtract) a number of hours to this date time, in place
+         * get a new DateTime with (or, with a negative number, subtract) a number of hours added
          * @param int $hours
          * @return static
          */
         public function addHours(int $hours): static
         {
-            $this->init($this->value + ($hours * 3600));
-            return $this;
+            return new static($this->value + ($hours * 3600));
         }
 
         /**
-         * add (or, with a negative number, subtract) a number of minutes to this date time, in place
+         * get a new DateTime with (or, with a negative number, subtract) a number of minutes added
          * @param int $minutes
          * @return static
          */
         public function addMinutes(int $minutes): static
         {
-            $this->init($this->value + ($minutes * 60));
-            return $this;
+            return new static($this->value + ($minutes * 60));
         }
 
         /**
-         * add (or, with a negative number, subtract) a number of calendar months to this date time, in place.
+         * get a new DateTime with (or, with a negative number, subtract) a Duration added
+         * @param Duration $duration
+         * @return static
+         */
+        public function addDuration(Duration $duration): static
+        {
+            return new static($this->value + $duration->toSeconds());
+        }
+
+        /**
+         * get a new DateTime with (or, with a negative number, subtract) a number of calendar months added.
          * Handles month/year overflow correctly (e.g. adding 1 month to December rolls into January of next year).
          * @param int $months
          * @return static
@@ -140,43 +157,39 @@
         public function addMonths(int $months): static
         {
             $ts = mktime($this->hour, $this->minute, $this->second, $this->month + $months, $this->day, $this->year);
-            $this->init($ts);
-            return $this;
+            return new static($ts);
         }
 
         /**
-         * add (or, with a negative number, subtract) a number of years to this date time, in place
+         * get a new DateTime with (or, with a negative number, subtract) a number of years added
          * @param int $years
          * @return static
          */
         public function addYears(int $years): static
         {
             $ts = mktime($this->hour, $this->minute, $this->second, $this->month, $this->day, $this->year + $years);
-            $this->init($ts);
-            return $this;
+            return new static($ts);
         }
 
         /**
-         * move this date time to midnight (00:00:00) on the first day of its month, in place
+         * get a new DateTime moved to midnight (00:00:00) on the first day of its month
          * @return static
          */
         public function startOfMonth(): static
         {
             $ts = mktime(0, 0, 0, $this->month, 1, $this->year);
-            $this->init($ts);
-            return $this;
+            return new static($ts);
         }
 
         /**
-         * move this date time to the last moment (23:59:59) of the last day of its month, in place
+         * get a new DateTime moved to the last moment (23:59:59) of the last day of its month
          * @return static
          */
         public function endOfMonth(): static
         {
             //day "0" of next month rolls back to the last day of the current month
             $ts = mktime(23, 59, 59, $this->month + 1, 0, $this->year);
-            $this->init($ts);
-            return $this;
+            return new static($ts);
         }
         #endregion
 
@@ -192,24 +205,6 @@
         {
             $otherSeconds = ($other instanceof DateTime || $other instanceof Date) ? $other->toEpochSeconds() : (new DateTime($other))->toEpochSeconds();
             return new Duration(abs($this->value - $otherSeconds));
-        }
-
-        /**
-         * is this date time today?
-         * @return bool
-         */
-        public function withinToday(): bool
-        {
-            return $this->toDate()->isToday();
-        }
-
-        /**
-         * is this date time yesterday?
-         * @return bool
-         */
-        public function withinYesterday(): bool
-        {
-            return DateTime::IsYesterday($this);
         }
 
         /**
@@ -334,6 +329,12 @@
             return (($tm->toEpochSeconds() >= $start) && ($tm->toEpochSeconds() <= $end));
         }
 
+        /** @deprecated Correctly-spelled alias for IsTomorow(). */
+        public static function IsTomorrow(DateTime | Date | int | string $date): bool
+        {
+            return self::IsTomorow($date);
+        }
+
         /**
          * checks if supplied argument is a date and time is from a past date
          * @param mixed $date
@@ -369,10 +370,10 @@
          */
         public static function IsSameDay(DateTime | Date | int | string $time_1, DateTime | Date | int | string $time_2): bool
         {
-            $tm1 = strtotime("m/d/Y", (new DateTime($time_1))->toEpochSeconds());
-            $tm2 = strtotime("m/d/Y", (new DateTime($time_2))->toEpochSeconds());
+            $day1 = date('Y-m-d', (new DateTime($time_1))->toEpochSeconds());
+            $day2 = date('Y-m-d', (new DateTime($time_2))->toEpochSeconds());
 
-            return ($tm1 == $tm2);
+            return $day1 === $day2;
         }
         #endregion
 

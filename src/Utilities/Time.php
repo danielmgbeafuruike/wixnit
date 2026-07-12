@@ -1,154 +1,58 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Wixnit\Utilities;
 
-use DateTime;
-use DateTimeZone;
-use JsonSerializable;
 use Stringable;
 use Wixnit\Enum\DBFieldType;
-use Wixnit\Exception\InvalidTimeOfDayException;
 use Wixnit\Interfaces\ISerializable;
 
 /**
- * A wall-clock time with no date — "9:00 AM", "17:30" — the thing you
- * reach for instead of smuggling a fake date into a DateTime just to
- * represent an opening time or a daily reminder slot.
+ * A wall-clock time of day, with no date component — "09:00", "5:30 PM".
+ * Pairs with Date (via Date::at()) to build a full DateTime, and with
+ * DateTime (via DateTime::toTime()) to pull the time-of-day back out.
  *
- * Canonical storage is a single integer: seconds since midnight
- * (0-86399), same "one unambiguous canonical form" idea as Money's
- * minor-unit integer. Arithmetic (addSeconds/addMinutes/addHours)
- * wraps around midnight rather than growing unbounded, since a time
- * of day is inherently cyclical — 23:30 + 1 hour is 00:30, not "24:30".
+ * Internally a single integer: seconds since midnight (0-86399).
+ * add()/subtract() wrap around midnight, since a clock face is
+ * cyclical — 23:30 plus 1 hour is 00:30, not "24:30".
  */
-final class Time implements ISerializable, Stringable, JsonSerializable
+final class Time implements ISerializable, Stringable
 {
     private const SECONDS_PER_DAY = 86400;
 
-    private int $secondsSinceMidnight = 0;
+    private int $seconds = 0;
 
-    public function __construct(mixed $arg = null)
+    public function __construct($arg = null)
     {
         $this->init($arg);
     }
 
     /**
-     * hydrate the object from parameter (lenient — used for DB/framework hydration)
+     * hydrate the time object
      * @param mixed $arg
      * @return void
      */
-    private function init(mixed $arg): void
+    private function init($arg = null): void
     {
-        if ($arg === null) {
-            return;
-        }
-
-        if (is_int($arg)) {
-            $this->secondsSinceMidnight = self::wrap($arg);
-            return;
-        }
-
-        if (is_object($arg) && isset($arg->secondsSinceMidnight)) {
-            $this->secondsSinceMidnight = self::wrap((int) $arg->secondsSinceMidnight);
-            return;
-        }
-
-        if (is_string($arg)) {
+        if ($arg instanceof Time) {
+            $this->seconds = $arg->seconds;
+        } elseif ($arg instanceof DateTime) {
+            $this->seconds = $arg->toEpochSeconds() % self::SECONDS_PER_DAY;
+        } elseif ($arg instanceof Date) {
+            // A Date has no time-of-day component by definition — always midnight.
+            $this->seconds = 0;
+        } elseif (is_int($arg)) {
+            $this->seconds = self::wrap($arg);
+        } elseif (is_string($arg)) {
             $parsed = self::parseComponents($arg);
 
             if ($parsed !== null) {
                 [$hour, $minute, $second] = $parsed;
-                $this->secondsSinceMidnight = $hour * 3600 + $minute * 60 + $second;
+                $this->seconds = $hour * 3600 + $minute * 60 + $second;
             }
-            // else: malformed input — leave default (00:00:00) rather than throwing,
-            // consistent with this library's "never throw on hydration" convention.
+            // else: malformed input — leave default (00:00:00) rather than
+            // throwing, consistent with the rest of this library's
+            // lenient hydration convention.
         }
-    }
-
-    // -----------------------------------------------------------------
-    // Strict construction (validates, for use with fresh application input)
-    // -----------------------------------------------------------------
-
-    /**
-     * Parse a time string. Accepts 24-hour ("09:00", "09:00:00", "17:30")
-     * and 12-hour with AM/PM ("9:00 AM", "5:30:15 PM").
-     * @throws InvalidTimeOfDayException if $value can't be parsed.
-     */
-    public static function fromString(string $value): self
-    {
-        $parsed = self::parseComponents($value);
-
-        if ($parsed === null) {
-            throw new InvalidTimeOfDayException(sprintf('"%s" is not a valid time of day.', $value));
-        }
-
-        [$hour, $minute, $second] = $parsed;
-
-        return self::fromHms($hour, $minute, $second);
-    }
-
-    /** Same as fromString(), but returns null instead of throwing on invalid input. */
-    public static function tryFrom(string $value): ?self
-    {
-        $parsed = self::parseComponents($value);
-
-        return $parsed === null ? null : self::fromHms(...$parsed);
-    }
-
-    public static function fromHms(int $hour, int $minute, int $second = 0): self
-    {
-        if ($hour < 0 || $hour > 23) {
-            throw new InvalidTimeOfDayException(sprintf('Hour must be between 0 and 23, got %d.', $hour));
-        }
-
-        if ($minute < 0 || $minute > 59) {
-            throw new InvalidTimeOfDayException(sprintf('Minute must be between 0 and 59, got %d.', $minute));
-        }
-
-        if ($second < 0 || $second > 59) {
-            throw new InvalidTimeOfDayException(sprintf('Second must be between 0 and 59, got %d.', $second));
-        }
-
-        $instance = new self();
-        $instance->secondsSinceMidnight = $hour * 3600 + $minute * 60 + $second;
-
-        return $instance;
-    }
-
-    public static function fromSecondsSinceMidnight(int $seconds): self
-    {
-        if ($seconds < 0 || $seconds >= self::SECONDS_PER_DAY) {
-            throw new InvalidTimeOfDayException(sprintf(
-                'Seconds since midnight must be between 0 and %d, got %d.',
-                self::SECONDS_PER_DAY - 1,
-                $seconds
-            ));
-        }
-
-        $instance = new self();
-        $instance->secondsSinceMidnight = $seconds;
-
-        return $instance;
-    }
-
-    public static function midnight(): self
-    {
-        return self::fromSecondsSinceMidnight(0);
-    }
-
-    public static function noon(): self
-    {
-        return self::fromHms(12, 0, 0);
-    }
-
-    /** The current wall-clock time. Pass a DateTimeZone to get it in a specific timezone. */
-    public static function now(?DateTimeZone $timezone = null): self
-    {
-        $now = $timezone !== null ? new DateTime('now', $timezone) : new DateTime('now');
-
-        return self::fromHms((int) $now->format('H'), (int) $now->format('i'), (int) $now->format('s'));
     }
 
     private static function parseComponents(string $value): ?array
@@ -174,58 +78,94 @@ final class Time implements ISerializable, Stringable, JsonSerializable
         return null;
     }
 
+    private static function wrap(int $seconds): int
+    {
+        return (($seconds % self::SECONDS_PER_DAY) + self::SECONDS_PER_DAY) % self::SECONDS_PER_DAY;
+    }
+
+    // -----------------------------------------------------------------
+    // Static factories
+    // -----------------------------------------------------------------
+
+    public static function Now(): Time
+    {
+        return new Time(new DateTime(time()));
+    }
+
+    public static function Midnight(): Time
+    {
+        return new Time(0);
+    }
+
+    public static function Noon(): Time
+    {
+        return new Time(12 * 3600);
+    }
+
     // -----------------------------------------------------------------
     // Accessors
     // -----------------------------------------------------------------
 
-    public function getHour(): int
+    public function getHours(): int
     {
-        return intdiv($this->secondsSinceMidnight, 3600);
+        return intdiv($this->seconds, 3600);
     }
 
-    public function getMinute(): int
+    public function getMinutes(): int
     {
-        return intdiv($this->secondsSinceMidnight % 3600, 60);
+        return intdiv($this->seconds % 3600, 60);
     }
 
-    public function getSecond(): int
+    public function getSeconds(): int
     {
-        return $this->secondsSinceMidnight % 60;
-    }
-
-    public function toSecondsSinceMidnight(): int
-    {
-        return $this->secondsSinceMidnight;
+        return $this->seconds % 60;
     }
 
     // -----------------------------------------------------------------
-    // Arithmetic (immutable, wraps around midnight)
+    // Conversions
     // -----------------------------------------------------------------
 
-    public function addSeconds(int $seconds): self
+    public function toSeconds(): int
     {
-        return self::fromSecondsSinceMidnight(self::wrap($this->secondsSinceMidnight + $seconds));
+        return $this->seconds;
     }
 
-    public function addMinutes(int $minutes): self
+    public function toMilliseconds(): int
     {
-        return $this->addSeconds($minutes * 60);
+        return $this->seconds * 1000;
     }
 
-    public function addHours(int $hours): self
+    // -----------------------------------------------------------------
+    // Arithmetic
+    // -----------------------------------------------------------------
+
+    /** Get a new Time with a Duration (or a raw number of seconds) added, wrapping around midnight. */
+    public function add(Duration|int $amount): static
     {
-        return $this->addSeconds($hours * 3600);
+        $delta = $amount instanceof Duration ? $amount->toSeconds() : $amount;
+
+        return new static($this->seconds + $delta);
     }
 
-    /** Seconds from this time to $other, wrapping forward (always 0-86399), e.g. 23:00 -> 01:00 is 7200 seconds, not negative. */
-    public function secondsUntil(Time $other): int
+    /** Get a new Time with a Duration (or a raw number of seconds) subtracted, wrapping around midnight. */
+    public function subtract(Duration|int $amount): static
     {
-        return self::wrap($other->secondsSinceMidnight - $this->secondsSinceMidnight);
+        $delta = $amount instanceof Duration ? $amount->toSeconds() : $amount;
+
+        return new static($this->seconds - $delta);
     }
 
-    private static function wrap(int $seconds): int
+    /**
+     * The absolute difference between this time and $other, as a
+     * Duration. This is simple clock-face distance (|a - b| in
+     * seconds) — it does NOT account for which one is "earlier in the
+     * day" by wrapping through midnight, since a bare Time doesn't
+     * know what day it's on. For that, combine with a Date via
+     * Date::at() to get a DateTime and use DateTime::diff() instead.
+     */
+    public function difference(Time $other): Duration
     {
-        return (($seconds % self::SECONDS_PER_DAY) + self::SECONDS_PER_DAY) % self::SECONDS_PER_DAY;
+        return new Duration(abs($this->seconds - $other->seconds));
     }
 
     // -----------------------------------------------------------------
@@ -234,12 +174,12 @@ final class Time implements ISerializable, Stringable, JsonSerializable
 
     public function equals(Time $other): bool
     {
-        return $this->secondsSinceMidnight === $other->secondsSinceMidnight;
+        return $this->seconds === $other->seconds;
     }
 
     public function compareTo(Time $other): int
     {
-        return $this->secondsSinceMidnight <=> $other->secondsSinceMidnight;
+        return $this->seconds <=> $other->seconds;
     }
 
     public function isBefore(Time $other): bool
@@ -253,8 +193,9 @@ final class Time implements ISerializable, Stringable, JsonSerializable
     }
 
     /**
-     * Is this time within [$start, $end]? Handles overnight ranges where
-     * $start > $end (e.g. isBetween(22:00, 06:00) matches 23:30 and 02:00).
+     * Is this time within [$start, $end]? Handles overnight ranges
+     * where $start > $end (e.g. isBetween(22:00, 06:00) matches 23:30
+     * and 02:00).
      */
     public function isBetween(Time $start, Time $end): bool
     {
@@ -266,28 +207,40 @@ final class Time implements ISerializable, Stringable, JsonSerializable
     }
 
     // -----------------------------------------------------------------
+    // Part of day
+    // -----------------------------------------------------------------
+
+    /** 05:00–11:59 */
+    public function isMorning(): bool
+    {
+        return $this->getHours() >= 5 && $this->getHours() < 12;
+    }
+
+    /** 12:00–16:59 */
+    public function isAfternoon(): bool
+    {
+        return $this->getHours() >= 12 && $this->getHours() < 17;
+    }
+
+    /** 17:00–20:59 */
+    public function isEvening(): bool
+    {
+        return $this->getHours() >= 17 && $this->getHours() < 21;
+    }
+
+    // -----------------------------------------------------------------
     // Formatting
     // -----------------------------------------------------------------
+
+    public function format(string $format = 'H:i:s'): string
+    {
+        return date($format, $this->seconds);
+    }
 
     /** "09:05:00", zero-padded 24-hour with seconds. */
     public function __toString(): string
     {
-        return sprintf('%02d:%02d:%02d', $this->getHour(), $this->getMinute(), $this->getSecond());
-    }
-
-    /** "9:05 AM" — a friendlier display form. */
-    public function toDisplayString(): string
-    {
-        $hour12 = $this->getHour() % 12;
-        $hour12 = $hour12 === 0 ? 12 : $hour12;
-        $suffix = $this->getHour() < 12 ? 'AM' : 'PM';
-
-        return sprintf('%d:%02d %s', $hour12, $this->getMinute(), $suffix);
-    }
-
-    public function jsonSerialize(): string
-    {
-        return (string) $this;
+        return sprintf('%02d:%02d:%02d', $this->getHours(), $this->getMinutes(), $this->getSeconds());
     }
 
     // -----------------------------------------------------------------
@@ -297,27 +250,23 @@ final class Time implements ISerializable, Stringable, JsonSerializable
     /**
      * get db field type for creating the appropriate db field type for saving the class to db
      * @return DBFieldType
-     *
-     * Uses VARCHAR to stay consistent with the rest of this library.
-     * Swap to DBFieldType::TIME here if your enum defines a native
-     * TIME case and you'd rather use that column type.
      */
     public function _dbType(): DBFieldType
     {
-        return DBFieldType::VARCHAR;
+        return DBFieldType::INT;
     }
 
     /**
      * prepare the object for saving to db
-     * @return string
+     * @return int
      */
-    public function _serialize(): string
+    public function _serialize(): int
     {
-        return (string) $this;
+        return $this->seconds;
     }
 
     /**
-     * re-populate object from data received from db
+     * re-populate object from data rceived from db
      * @param mixed $data
      * @return void
      */

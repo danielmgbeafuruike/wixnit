@@ -10,7 +10,8 @@
      * date, an invoice date) - internally normalized to midnight so that two Dates on
      * the same calendar day are always equal, regardless of what time they were created at.
      *
-     * If you need a specific point in time (date + time), use the `DateTime` class instead.
+     * If you need a specific point in time (date + time), use the `DateTime` class instead,
+     * or combine this Date with a `Time` via at() to build one directly.
      */
     class Date implements ISerializable
     {
@@ -94,6 +95,16 @@
         }
 
         /**
+         * combine this calendar date with a time-of-day to build a specific DateTime moment
+         * @param Time $time
+         * @return DateTime
+         */
+        public function at(Time $time): DateTime
+        {
+            return new DateTime($this->value + $time->toSeconds());
+        }
+
+        /**
          * check whether this date falls on the same calendar day as another date
          * @param Date|DateTime|int|string $other
          * @return bool
@@ -133,25 +144,23 @@
         }
 
         /**
-         * add (or, with a negative number, subtract) days to this date, in place
+         * get a new Date with (or, with a negative number, subtract) days added
          * @param int $days
          * @return static
          */
         public function addDays(int $days): static
         {
-            $this->init($this->value + ($days * 86400));
-            return $this;
+            return new static($this->value + ($days * 86400));
         }
 
         /**
-         * add (or, with a negative number, subtract) calendar months to this date, in place
+         * get a new Date with (or, with a negative number, subtract) calendar months added
          * @param int $months
          * @return static
          */
         public function addMonths(int $months): static
         {
-            $this->init(mktime(0, 0, 0, $this->month + $months, $this->day, $this->year));
-            return $this;
+            return new static(mktime(0, 0, 0, $this->month + $months, $this->day, $this->year));
         }
 
         /**
