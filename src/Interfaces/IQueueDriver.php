@@ -1,8 +1,10 @@
 <?php
 
-    namespace Wixnit\Queue;
+    namespace Wixnit\Interfaces;
 
     use Throwable;
+    use Wixnit\Queue\QueuedJob;
+    use Wixnit\Queue\FailedJob;
 
     /**
      * The contract a queue backend must implement. Wixnit ships three: `SyncDriver` (runs

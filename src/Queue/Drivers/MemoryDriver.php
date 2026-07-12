@@ -4,7 +4,7 @@
 
     use Throwable;
     use Wixnit\Queue\FailedJob;
-    use Wixnit\Queue\IQueueDriver;
+    use Wixnit\Interfaces\IQueueDriver;
     use Wixnit\Queue\QueuedJob;
     use Wixnit\Utilities\DateTime;
 

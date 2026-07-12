@@ -3,6 +3,7 @@
     namespace Wixnit\Queue;
 
     use Throwable;
+    use Wixnit\Interfaces\IQueueDriver;
 
     /**
      * Pulls jobs off a queue (via a driver) and runs them, handling retries with backoff

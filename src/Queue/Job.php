@@ -3,6 +3,7 @@
     namespace Wixnit\Queue;
 
     use Throwable;
+    use Wixnit\Interfaces\IJob;
 
     /**
      * Base class for queueable jobs. Extend this, implement handle(), and push instances

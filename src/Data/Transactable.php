@@ -6,6 +6,7 @@
     use Wixnit\Enum\DBJoin;
     use Wixnit\Enum\FilterOperation;
     use Wixnit\Enum\OrderDirection;
+    use Wixnit\Exception\ConcurrencyException;
     use Wixnit\Exception\DatabaseException;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
@@ -19,6 +20,8 @@
 
     abstract class Transactable extends Mappable
     {
+        use DirtyTracking;
+
         public string $id = "";
         public DateTime $created;
         public DateTime $modified;
@@ -67,6 +70,7 @@
 
             $this->initializeObject($arg);
             $this->bindRelationCollections();
+            $this->bindValueProperties();
 
             //call on created event handler
             $this->onCreated();
@@ -84,14 +88,38 @@
             $id = $this->id;
             $this->modified = new DateTime(time());
 
+            $lockProperty = $this->getOptimisticLockProperty();
+
             if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
             {
                 //set the last modified date
                 $this->modified = new DateTime(time());
 
-                DBQuery::With(DB::Connect($this->db, $this->tableName))
-                    ->where([$this->idName=>$id])
-                    ->update($this->toDBObject());
+                $where = [$this->idName=>$id];
+                $previousLockValue = null;
+
+                if($lockProperty !== null)
+                {
+                    //require the version to still match what we loaded, and bump it - the WHERE
+                    //uses the value as-loaded (via DirtyTracking), the SET uses the bumped one
+                    $where[$lockProperty->baseName] = $this->getOriginal($lockProperty->name);
+
+                    $previousLockValue = $this->{$lockProperty->name};
+                    $this->{$lockProperty->name} = $previousLockValue->next();
+                }
+
+                $result = DBQuery::With(DB::Connect($this->db, $this->tableName))
+                    ->where($where)
+                    ->update($this->toDBObject(false));
+
+
+                if(($lockProperty !== null) && ($result->count === 0))
+                {
+                    //nothing matched - someone else saved this row since we loaded it. undo our
+                    //optimistic bump and refuse to silently overwrite their change.
+                    $this->{$lockProperty->name} = $previousLockValue;
+                    throw ConcurrencyException::StaleWrite(get_class($this), $id);
+                }
 
                 //call on updated event handler
                 $this->onUpdated();
@@ -111,13 +139,35 @@
                 }
 
                 DBQuery::With(DB::Connect($this->db, $this->tableName))
-                    ->insert($this->toDBObject());
+                    ->insert($this->toDBObject(true));
 
                 //call on inserted event handler
                 $this->onInserted();
             }
+
+            //a fresh baseline for dirty tracking - this save is now the new "as loaded" state
+            $this->captureOriginalState();
+
             //call the general saved method
             $this->onSaved();
+        }
+
+        /**
+         * find this object's OptimisticLock property, if it has one
+         * @return ObjectProperty|null
+         */
+        private function getOptimisticLockProperty(): ?ObjectProperty
+        {
+            $props = $this->map->publicProperties;
+
+            for($i = 0; $i < count($props); $i++)
+            {
+                if($props[$i]->type === OptimisticLock::class)
+                {
+                    return $props[$i];
+                }
+            }
+            return null;
         }
 
         /**
@@ -484,7 +534,7 @@
                     $fieldProp->length = 100;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
                 }
-                else if(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0] == "Date")
+                else if(in_array(array_reverse(explode("\\", $this->mappedType($this->includes[$i], 'null')))[0], ["Date", "DateTime"]))
                 {
                     $fieldProp->type = DBFieldType::INT;
                     $fieldProp->isUnique = ((in_array($this->includes[$i], $this->unique)) || (in_array(strtolower($this->includes[$i]), $this->unique)));
@@ -501,9 +551,13 @@
 
         /**
          * Convert transactable data to a format that can be easily saved to the db
+         * @param bool $isInsert true when called for a brand-new row (INSERT), false for
+         *                        an existing one (UPDATE) - LazyText uses this to decide
+         *                        whether it's safe to write its current value at all,
+         *                        see LazyText's class docblock for why this matters.
          * @return array
          */
-        public function toDBObject(): array
+        public function toDBObject(bool $isInsert = false): array
         {
             $ret = [];
 
@@ -518,6 +572,16 @@
                 {
                     //a #[HasMany] relation (either flavor) has no column of its own on this
                     //table - it's backed by a foreign key on the related model instead.
+                    continue;
+                }
+
+                if(($this->$name instanceof LazyText) && (!$isInsert) && (!$this->$name->isDirty()))
+                {
+                    //writing an untouched LazyText value on an UPDATE would clobber the
+                    //real column value with whatever this object happened to be
+                    //constructed with (usually blank, since LazyText is excluded from the
+                    //default SELECT) - only write it if it was actually set() this
+                    //request, or if this is a brand-new row with nothing to clobber.
                     continue;
                 }
 
@@ -1145,6 +1209,10 @@
                     }
                 }
             }
+
+            //snapshot this object's state as the dirty-tracking baseline, now that every
+            //property has been populated from the row
+            $this->captureOriginalState();
         }
 
         /**
@@ -1155,6 +1223,26 @@
         public function getConnection(): \mysqli
         {
             return $this->db->getConnection();
+        }
+
+        /**
+         * @return string the real column name backing this model's id (e.g. "postid"),
+         *                  since the literal string "id" is never a real column name -
+         *                  used by Counter and other bound value-object properties that
+         *                  need to filter by this object's own row.
+         */
+        public function getIdColumn(): string
+        {
+            return $this->idName;
+        }
+
+        /**
+         * @return string this model's table name - used by LazyText to run its own
+         *                  deferred, single-column SELECT.
+         */
+        public function getTableName(): string
+        {
+            return $this->tableName;
         }
 
         /**
@@ -1728,14 +1816,9 @@
                 return;
             }
 
-            $relations = RelationMap::forClass(get_called_class());
-
-            if(count($relations) == 0)
-            {
-                return;
-            }
-
             $connection = $instances[0]->db->getConnection();
+
+            $relations = RelationMap::forClass(get_called_class());
 
             foreach($relations as $relation)
             {
@@ -1759,6 +1842,74 @@
                 else if($relation->relationType === "hasManyThrough")
                 {
                     self::loadHasManyThrough($instances, $relation, $connection);
+                }
+            }
+
+            //LazyText fields are never eager by default (unlike a "array"-kind relation) -
+            //only explicitly named via With() (or hydrate(), which calls this the same way)
+            foreach(ValuePropertyMap::forClass(get_called_class()) as $entry)
+            {
+                if(($entry["kind"] === "lazyText") && in_array($entry["property"], $forceOn, true))
+                {
+                    self::loadLazyText($instances, $entry["property"], $connection);
+                }
+            }
+        }
+
+        /**
+         * Batched hydration for a LazyText field forced eager via With()/hydrate(): one
+         * query for the whole page of instances, rather than one per instance.
+         * @param array $instances
+         * @param string $field
+         * @param \mysqli $connection
+         * @return void
+         */
+        private static function loadLazyText(array $instances, string $field, \mysqli $connection): void
+        {
+            $ids = array_values(array_unique(array_filter(
+                array_map(fn($i) => $i->id, $instances),
+                fn($v) => ($v !== null) && ($v !== "")
+            )));
+
+            if(count($ids) === 0)
+            {
+                return;
+            }
+
+            $idColumn = $instances[0]->getIdColumn();
+            $tableName = $instances[0]->getTableName();
+
+            $placeholders = implode(", ", array_fill(0, count($ids), "?"));
+            $types = str_repeat("s", count($ids));
+
+            $sql = "SELECT ".$idColumn.", ".$field." FROM ".$tableName." WHERE ".$idColumn." IN (".$placeholders.")";
+            $stmt = $connection->prepare($sql);
+
+            if($stmt === false)
+            {
+                throw DatabaseException::QueryFailed(__METHOD__, $sql, $ids, $connection->error, $connection->errno);
+            }
+
+            $stmt->bind_param($types, ...$ids);
+
+            if(!$stmt->execute())
+            {
+                throw DatabaseException::QueryFailed(__METHOD__, $sql, $ids, $stmt->error, $stmt->errno);
+            }
+
+            $result = $stmt->get_result();
+            $byId = [];
+
+            while($row = $result->fetch_assoc())
+            {
+                $byId[$row[$idColumn]] = $row[$field];
+            }
+
+            foreach($instances as $instance)
+            {
+                if(isset($byId[$instance->id]))
+                {
+                    $instance->$field->primeWith($byId[$instance->id]);
                 }
             }
         }
@@ -2577,6 +2728,49 @@
                 $this->$name = ($definition->relationType === "belongsToMany")
                     ? new BelongsToManyCollection($this, $definition)
                     : new HasManyCollection($this, $definition);
+            }
+        }
+
+        /**
+         * Wires up Counter/LazyText's live parent reference and FlagSet's #[Flags]
+         * names, for every such property on this class - runs once, at the end of
+         * construction, after fromDBResult()/initializeFields() have already run
+         * (whichever applied), so a Counter/LazyText that was already populated from a
+         * fetched row keeps its value and is simply bound on top, while one that wasn't
+         * constructed yet (LazyText's default excluded-from-SELECT case) gets a fresh
+         * blank instance constructed here instead.
+         * @return void
+         */
+        private function bindValueProperties(): void
+        {
+            foreach(ValuePropertyMap::forClass(get_called_class()) as $entry)
+            {
+                $name = $entry["property"];
+
+                if($entry["kind"] === "counter")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new Counter();
+                    }
+                    $this->$name->bind($this, $name);
+                }
+                else if($entry["kind"] === "lazyText")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new LazyText();
+                    }
+                    $this->$name->bind($this, $name);
+                }
+                else if(($entry["kind"] === "flagSet") && ($entry["names"] !== null))
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new FlagSet();
+                    }
+                    $this->$name->bindNames($entry["names"]);
+                }
             }
         }
 

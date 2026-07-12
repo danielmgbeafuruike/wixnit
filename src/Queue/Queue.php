@@ -2,6 +2,7 @@
 
     namespace Wixnit\Queue;
 
+    use Wixnit\Interfaces\IQueueDriver;
     use Wixnit\Queue\Drivers\FileDriver;
 
     /**

@@ -2,8 +2,6 @@
 
     namespace Wixnit\Utilities;
 
-    use stdClass;
-
     class Range extends Span
     {
         private ?Span $constraint = null;

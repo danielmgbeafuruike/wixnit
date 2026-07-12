@@ -22,7 +22,7 @@
 
         /**
          * hydrate the duration object
-         * @param mixed $arg
+         * @param mixed $duration_in_seconds
          * @return void
          */
         private function init($duration_in_seconds =null)

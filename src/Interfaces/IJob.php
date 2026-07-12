@@ -1,6 +1,6 @@
 <?php
 
-    namespace Wixnit\Queue;
+    namespace Wixnit\Interfaces;
 
     /**
      * The minimum contract a job must fulfil to be queueable. In practice, you'll almost

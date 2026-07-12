@@ -27,14 +27,19 @@
                 //#[HasMany] relation properties (either flavor) have no real column - they're
                 //backed by a foreign key on a different table entirely - so they must never
                 //end up in the SELECT field list, the same way toDBObject()/getDBImage()
-                //already exclude them from writes and schema.
-                $relationNames = class_exists($table_name->name) ? array_map('strtolower', RelationMap::names($table_name->name)) : [];
+                //already exclude them from writes and schema. LazyText properties DO have a
+                //real column, but are deliberately excluded from the default SELECT too -
+                //that's the whole point of the type - fetched separately on demand, or via
+                //With('field') to include them in this query up front.
+                $excludedNames = class_exists($table_name->name)
+                    ? array_map('strtolower', array_merge(RelationMap::names($table_name->name), ValuePropertyMap::lazyTextNames($table_name->name)))
+                    : [];
 
                 for($i = 0; $i < count($table_name->publicProperties); $i++)
                 {
                     $prop = $table_name->publicProperties[$i];
 
-                    if(in_array(strtolower($prop->name), $relationNames, true) || in_array(strtolower($prop->baseName), $relationNames, true))
+                    if(in_array(strtolower($prop->name), $excludedNames, true) || in_array(strtolower($prop->baseName), $excludedNames, true))
                     {
                         continue;
                     }
