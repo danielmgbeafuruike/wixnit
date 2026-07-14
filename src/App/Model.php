@@ -172,7 +172,7 @@
          * @param array $data
          * @return static
          */
-        public static function Fill(array $data): static
+        public static function FillFrom(array $data): static
         {
             return (new static())->fill($data);
         }
