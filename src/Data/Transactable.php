@@ -67,7 +67,7 @@
         {
             parent::__construct();
 
-            $this->db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $this->db = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $this->map = $this->getMap();
             $this->tableName = strtolower(array_reverse(explode("\\", $this->map->name))[0]);
             $this->idName = strtolower($this->tableName."id");

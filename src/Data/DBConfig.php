@@ -163,5 +163,18 @@ class DBConfig
         return $ret;
     }
 
+
+    /**
+     * Wrap an existing mysqli connection.
+     * does not set the global sql connection service
+     */
+    public static function UseOnce(mysqli $mysqli): DBConfig
+    {
+        $ret = new DBConfig();
+        $ret->conn = $mysqli;
+
+        return $ret;
+    }
+
     #endregion
 }
