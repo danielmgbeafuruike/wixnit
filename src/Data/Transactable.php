@@ -8,6 +8,7 @@
     use Wixnit\Enum\OrderDirection;
     use Wixnit\Exception\ConcurrencyException;
     use Wixnit\Exception\DatabaseException;
+    use Wixnit\Exception\PropertyException;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Utilities\Convert;
     use Wixnit\Utilities\Random;
@@ -18,7 +19,7 @@
     use ReflectionClass;
     use ReflectionEnum;
 
-    abstract class Transactable extends Mappable
+    abstract class Transactable extends Mappable implements \JsonSerializable
     {
         use DirtyTracking;
 
@@ -32,6 +33,9 @@
         protected string $lazyLoadId = "";
 
         protected array $serialization = [];
+
+        /** @var array snapshot of #[Immutable] properties' values at hydration time - see fromDBResult() and save() */
+        protected array $immutableSnapshot = [];
         protected array $deserialization = [];
 
         protected array $unique = [];
@@ -68,9 +72,11 @@
             $this->tableName = strtolower(array_reverse(explode("\\", $this->map->name))[0]);
             $this->idName = strtolower($this->tableName."id");
 
+            $this->preInitValueProperties(); //I added it to prevent touch before initialization error
             $this->initializeObject($arg);
             $this->bindRelationCollections();
             $this->bindValueProperties();
+            
 
             //call on created event handler
             $this->onCreated();
@@ -90,10 +96,9 @@
 
             $lockProperty = $this->getOptimisticLockProperty();
 
-            if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
+            if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->exists())
             {
-                //set the last modified date
-                $this->modified = new DateTime(time());
+                $this->assertImmutablePropertiesUnchanged();
 
                 $where = [$this->idName=>$id];
                 $previousLockValue = null;
@@ -127,11 +132,12 @@
             else
             {
                 $this->created = $this->modified;
+                $this->deleted = new DateTime(0);
 
                 if(($this->forceAutoGenId) || ($this->id == ""))
                 {
                     $id = Random::Characters(32);
-                    if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->limit(1)->count() > 0)
+                    if(DBQuery::With(DB::Connect($this->db, $this->tableName))->where([$this->idName=>$id])->exists())
                     {
                         $id = Random::Characters(32);
                     }
@@ -171,6 +177,26 @@
         }
 
         /**
+         * Checked at the start of save()'s UPDATE path (never on the first INSERT,
+         * since there's nothing to compare against yet). Throws if any #[Immutable]
+         * property's current value differs from what it was when this object was
+         * loaded from the database.
+         * @return void
+         */
+        private function assertImmutablePropertiesUnchanged(): void
+        {
+            $className = get_called_class();
+
+            foreach($this->immutableSnapshot as $name => $originalValue)
+            {
+                if(isset($this->$name) && ($this->$name !== $originalValue))
+                {
+                    throw PropertyException::ImmutablePropertyChanged($className, $name, $originalValue, $this->$name);
+                }
+            }
+        }
+
+        /**
          * Delete the transactable from the database
          * @return void
          */
@@ -207,6 +233,47 @@
         {
             self::assertKnownRelations($relations, []);
             self::loadRelations([$this], $relations, []);
+            return $this;
+        }
+
+        /**
+         * Mass-assigns properties from a plain array (e.g. request data), restricted to
+         * whichever properties this class has explicitly marked #[Fillable] (or every
+         * property except ones marked #[Guarded], if that's the strategy this class
+         * uses instead). Keys in $data that don't correspond to a mass-assignable
+         * property are silently ignored, not an error.
+         *
+         * Throws if this class has marked neither #[Fillable] nor #[Guarded] anywhere -
+         * there is no "everything is fillable" fallback, since that would silently
+         * reintroduce the exact mass-assignment risk this method exists to prevent.
+         * @param array $data
+         * @return static
+         */
+        public function fill(array $data): static
+        {
+            $className = get_called_class();
+
+            if(!PropertyMap::hasFillStrategy($className))
+            {
+                throw PropertyException::NoFillStrategy($className);
+            }
+
+            foreach($this->map->publicProperties as $prop)
+            {
+                if(!PropertyMap::isFillable($className, $prop->name))
+                {
+                    continue;
+                }
+
+                if(array_key_exists($prop->name, $data))
+                {
+                    $this->{$prop->name} = $data[$prop->name];
+                }
+                else if(array_key_exists(strtolower($prop->name), $data))
+                {
+                    $this->{$prop->name} = $data[strtolower($prop->name)];
+                }
+            }
             return $this;
         }
 
@@ -546,7 +613,67 @@
                 }
                 $image->addField($fieldProp);
             }
+
+            //#[Unique] is additive on top of the $unique array check already applied
+            //above - rather than touching every isUnique assignment scattered through
+            //this method, do one final pass matching PHP property names (which
+            //PropertyMap needs) back to the DB column names already on $image->fields.
+            $className = get_called_class();
+
+            foreach($this->map->publicProperties as $prop)
+            {
+                if(PropertyMap::isUnique($className, $prop->name))
+                {
+                    $columnName = strtolower($prop->baseName);
+
+                    foreach($image->fields as $field)
+                    {
+                        if($field->name === $columnName)
+                        {
+                            $field->isUnique = true;
+                        }
+                    }
+                }
+            }
+
             return $image;
+        }
+
+        /**
+         * Convert transactable data to a format that can be easily saved to the db
+         * @param bool $isInsert true when called for a brand-new row (INSERT), false for
+         *                        an existing one (UPDATE) - LazyText uses this to decide
+         *                        whether it's safe to write its current value at all,
+         *                        see LazyText's class docblock for why this matters.
+         * @return array
+         */
+        /**
+         * Builds this object's JSON representation - every public property except ones
+         * marked #[Redacted]. Values that are themselves ISerializable/JsonSerializable
+         * (Money, HashedPassword, HasManyCollection, etc.) already know how to show
+         * their own correct display value, since PHP's json_encode() recurses into each
+         * property value on its own - this method only decides which property *names*
+         * are included at this level.
+         *
+         * The older $hidden mechanism (Mappable's hiddenProperties) needs no handling
+         * here at all - those were never real public properties to begin with, so
+         * they're already naturally absent from $this->map->publicProperties.
+         * @return array
+         */
+        public function jsonSerialize(): mixed
+        {
+            $ret = [];
+            $className = get_called_class();
+
+            foreach($this->map->publicProperties as $prop)
+            {
+                if(PropertyMap::isRedacted($className, $prop->name))
+                {
+                    continue;
+                }
+                $ret[$prop->name] = $this->{$prop->name} ?? null;
+            }
+            return $ret;
         }
 
         /**
@@ -588,6 +715,18 @@
                 if((strtolower($name) != $this->tableName."id") && (strtolower($name) != "id"))
                 {
                     $val = $this->$name;
+
+                    $caster = PropertyMap::casterFor(get_called_class(), $name);
+
+                    if($caster !== null)
+                    {
+                        //#[Cast] is a lighter-weight, stateless alternative to the
+                        //existing $serialization/$deserialization method-name mechanism -
+                        //applied here, upfront, so the rest of this method's existing
+                        //logic (ISerializable checks, etc.) runs against the already-cast
+                        //value without needing its own awareness of #[Cast] at all.
+                        $val = $caster::castOut($val);
+                    }
 
                     if(isset($this->serialization[$name]) || isset($this->serialization[strtolower($name)]))
                     {
@@ -899,6 +1038,13 @@
 
                 if((strtolower($prop->name) != $this->idName) && isset($data[strtolower($prop->baseName)]) && (strtolower($prop->name) != "id"))
                 {
+                    $caster = PropertyMap::casterFor(get_called_class(), $prop->name);
+
+                    if($caster !== null)
+                    {
+                        $data[strtolower($prop->baseName)] = $caster::castIn($data[strtolower($prop->baseName)]);
+                    }
+
                     if(isset($this->deserialization[$prop->name]) || isset($this->deserialization[strtolower($prop->name)]))
                     {
                         $method = $this->deserialization[$prop->name] ?? $this->deserialization[strtolower($prop->name)];
@@ -1210,6 +1356,20 @@
                 }
             }
 
+            if($level === 0)
+            {
+                //snapshot #[Immutable] properties' original values, so save() can later
+                //detect if one changed since this object was loaded - only meaningful
+                //at the top level, not for nested/joined sub-object hydration.
+                foreach(PropertyMap::immutableNames(get_called_class()) as $name)
+                {
+                    if(isset($this->$name))
+                    {
+                        $this->immutableSnapshot[$name] = $this->$name;
+                    }
+                }
+            }
+
             //snapshot this object's state as the dirty-tracking baseline, now that every
             //property has been populated from the row
             $this->captureOriginalState();
@@ -1252,10 +1412,20 @@
         public function getFields(): array
         {
             $ret = [];
+            $searchable = PropertyMap::searchableNames(get_called_class());
 
             for($i = 0; $i < count($this->map->publicProperties); $i++)
             {
-                $name = $this->map->publicProperties[$i]->baseName;
+                $prop = $this->map->publicProperties[$i];
+                $name = $prop->baseName;
+
+                if((count($searchable) > 0) && (!in_array($prop->name, $searchable, true)))
+                {
+                    //#[Searchable] narrows the default field list when at least one
+                    //property on the class is marked with it - an explicit field list
+                    //passed to Search directly still overrides this either way.
+                    continue;
+                }
 
                 if((strtolower($name) == $this->tableName."id") || (strtolower($name) == "id"))
                 {
@@ -1546,6 +1716,7 @@
 
                 //hdrate the object
                 $obj->fromDBResult($result->data[$i]);
+                $obj->bindValueProperties();
 
                 //fire object life span event
                 $obj->onInitialized();
@@ -2159,7 +2330,7 @@
          */
         private static function assertKnownRelations(array $forceOn, array $forceOff): void
         {
-            $known = RelationMap::names(get_called_class());
+            $known = array_merge(RelationMap::names(get_called_class()), ValuePropertyMap::lazyTextNames(get_called_class()));
 
             foreach($forceOn as $name)
             {
@@ -2770,6 +2941,40 @@
                         $this->$name = new FlagSet();
                     }
                     $this->$name->bindNames($entry["names"]);
+                }
+            }
+        }
+
+        /**
+         * I added this just to initialize the propertie and prevent getting 
+         * the property cannot be touched before it is initialized
+         */
+        private function preInitValueProperties(): void
+        {
+            foreach(ValuePropertyMap::forClass(get_called_class()) as $entry)
+            {
+                $name = $entry["property"];
+
+                if($entry["kind"] === "counter")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new Counter();
+                    }
+                }
+                else if($entry["kind"] === "lazyText")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new LazyText();
+                    }
+                }
+                else if(($entry["kind"] === "flagSet") && ($entry["names"] !== null))
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new FlagSet();
+                    }
                 }
             }
         }

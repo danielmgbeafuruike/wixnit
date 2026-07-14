@@ -38,9 +38,7 @@
         private ?Transactable $parent = null;
         private ?string $field = null;
 
-        function __construct()
-        {
-        }
+        function __construct() {}
 
         /**
          * Called once by the framework, right after construction. Not intended to be
@@ -90,11 +88,11 @@
 
             if($by >= 0)
             {
-                $class::Increment($this->field, $by, $this->parent->getConnection(), new Filter([$idColumn => $this->parent->id]));
+                $class::Increment($this->parent->getConnection(), $this->field, $by, new Filter([$idColumn => $this->parent->id]));
             }
             else
             {
-                $class::Decrement($this->field, -$by, $this->parent->getConnection(), new Filter([$idColumn => $this->parent->id]));
+                $class::Decrement($this->parent->getConnection(), $this->field, -$by, new Filter([$idColumn => $this->parent->id]));
             }
             $this->value += $by;
             return $this;

@@ -164,6 +164,20 @@
         }
 
         /**
+         * Mass-assigns properties from a plain array (e.g. request data) onto a fresh
+         * instance, restricted to whichever properties this class has marked
+         * #[Fillable]/#[Guarded] - see Transactable::fill() for the full behavior.
+         * Uses the default connection; construct with an explicit connection first
+         * (e.g. `(new User($conn))->fill($data)`) if a specific one is needed.
+         * @param array $data
+         * @return static
+         */
+        public static function Fill(array $data): static
+        {
+            return (new static())->fill($data);
+        }
+
+        /**
          * Get the sum of a numeric field across all matching rows.
          * @param string $field
          * @return int|float|string|null

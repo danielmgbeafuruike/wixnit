@@ -2,7 +2,6 @@
 
     namespace Wixnit\Data;
 
-    use JsonSerializable;
     use Wixnit\Utilities\Span;
     use Wixnit\Exception\RelationException;
 
@@ -24,7 +23,7 @@
      *   $user->reviews->all();         // explicit, opt-in full materialization
      *   $user->reviews->add($review);  // sets the foreign key on $review and saves it
      */
-    class HasManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, JsonSerializable
+    class HasManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable
     {
         private Transactable $parent;
         private RelationDefinition $definition;
@@ -238,8 +237,14 @@
             return ($key === null) ? $this->parent->id : $this->parent->$key;
         }
 
-        public function jsonSerialize(): array
+        /**
+         * Only serializes if already loaded, same reasoning as LazyText - a lazy
+         * relation shouldn't be forced to load just to build a JSON response. Use
+         * With() on the query first if the relation should be included.
+         * @return array
+         */
+        public function jsonSerialize(): mixed
         {
-            return $this->items ?? [];
+            return $this->loaded ? $this->items : [];
         }
     }

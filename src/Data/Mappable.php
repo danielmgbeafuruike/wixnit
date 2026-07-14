@@ -478,6 +478,10 @@
             {
                 return true;
             }
+            if(PropertyMap::isExcluded(get_class($this), $propertyName))
+            {
+                return true;
+            }
             return false;
         }
 

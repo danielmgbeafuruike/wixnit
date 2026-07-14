@@ -2,7 +2,6 @@
 
     namespace Wixnit\Data;
 
-    use JsonSerializable;
     use Wixnit\Exception\RelationException;
     use Wixnit\Exception\DatabaseException;
 
@@ -22,7 +21,7 @@
      *   $post->tags->detach($tag);      // DELETE the pivot row
      *   $post->tags->sync([$a, $b]);    // replace the full set
      */
-    class BelongsToManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, JsonSerializable
+    class BelongsToManyCollection implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable
     {
         private Transactable $parent;
         private RelationDefinition $definition;
@@ -372,8 +371,14 @@
             return $this->parent->id;
         }
 
-        public function jsonSerialize(): array
+        /**
+         * Only serializes if already loaded, same reasoning as HasManyCollection/
+         * LazyText - a lazy relation shouldn't be forced to load just to build a JSON
+         * response. Use With() on the query first if the relation should be included.
+         * @return array
+         */
+        public function jsonSerialize(): mixed
         {
-            return $this->items ?? [];
+            return $this->isLoaded() ? $this->all() : [];
         }
     }
