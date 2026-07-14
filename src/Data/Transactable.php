@@ -1619,7 +1619,7 @@
          */
         protected static function PurgeDeleted($conn): DBResult
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -1635,7 +1635,7 @@
          */
         protected static function BuildCollection($conn): DBCollection
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $db = $config->getConnection();
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($db);
@@ -1745,7 +1745,7 @@
          */
         protected static function FromDeleted($conn): DBCollection
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $db = $config->getConnection();
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($db);
@@ -1840,7 +1840,7 @@
          */
         protected static function CountCollection($conn): int
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -1904,7 +1904,7 @@
          */
         protected static function DeletedCount($conn): int
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection())
                 ->where(["deleted"=>new notEqual(0)]);
@@ -2427,7 +2427,7 @@
          */
         protected static function SumValue($conn, string $field): int|float|string|null
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2448,7 +2448,7 @@
          */
         protected static function AverageValue($conn, string $field): int|float|string|null
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2469,7 +2469,7 @@
          */
         protected static function MinValue($conn, string $field): int|float|string|null
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2490,7 +2490,7 @@
          */
         protected static function MaxValue($conn, string $field): int|float|string|null
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2510,7 +2510,7 @@
          */
         protected static function ExistsCollection($conn): bool
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2575,7 +2575,7 @@
          */
         protected static function PluckValue($conn, string $field): array
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2596,7 +2596,7 @@
          */
         protected static function GroupCountValue($conn, string $field): array
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2619,7 +2619,7 @@
          */
         protected static function IncrementValue($conn, string $field, int|float $by = 1): DBResult
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2640,7 +2640,7 @@
          */
         protected static function DecrementValue($conn, string $field, int|float $by = 1): DBResult
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2661,7 +2661,7 @@
          */
         protected static function UpdateMatching($conn, array $data): DBResult
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2681,7 +2681,7 @@
          */
         protected static function RestoreValue($conn): DBResult
         {
-            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $config = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($config->getConnection());
             $map = $instance->getMap();
@@ -2736,7 +2736,7 @@
          */
         protected static function QuickDelete($conn): DBResult
         {
-            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
 
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($db->getConnection());
@@ -2803,7 +2803,7 @@
          */
         public static function QuickSave($conn): void
         {
-            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::Use($conn);
+            $db = ($conn instanceof DBConfig) ? $conn : DBConfig::UseOnce($conn);
 
             $reflection = new ReflectionClass(get_called_class());
             $instance = $reflection->newInstance($db->getConnection());
