@@ -8,7 +8,7 @@
 
     interface IRouteGuard
     {
-        public function checkAccess(Request $req): bool;
+        public function checkAccess(Request $req, array | null $payload = null): bool;
 
         public function onFail(): Response | View;
     }

@@ -31,14 +31,41 @@
         private int $amount;
         private int $scale;
 
+        /**
+         * NOTE: $amount here is a MAJOR-unit float (e.g. 19.99), matching the
+         * "convenient direct instantiation" use case (new Money(19.99)).
+         * It gets multiplied by the scale factor to produce minor units.
+         *
+         * Internal code that already has a minor-unit integer (e.g. from
+         * arithmetic or from fromMinorUnits()) must NOT go through this
+         * constructor — use the private hydrate() factory instead, or it
+         * will be scaled up a second time.
+         */
         public function __construct(float $amount = 0, int $scale = self::DEFAULT_SCALE)
         {
             if ($scale < 0) {
                 throw new InvalidAmountException('Scale cannot be negative.');
             }
 
-            $this->amount = round($amount * self::subunitFactor($scale));
+            $this->amount = (int) round($amount * self::subunitFactor($scale));
             $this->scale = $scale;
+        }
+
+        /**
+         * Build an instance directly from an already-computed minor-units
+         * integer and scale, with NO further scaling applied. This is the
+         * safe internal counterpart to the public constructor.
+         */
+        private static function hydrate(int $amount, int $scale): self
+        {
+            if ($scale < 0) {
+                throw new InvalidAmountException('Scale cannot be negative.');
+            }
+
+            $money = new self(0, $scale);
+            $money->amount = $amount;
+
+            return $money;
         }
 
         // -----------------------------------------------------------------
@@ -47,6 +74,12 @@
 
         /** Build from an integer already expressed in minor units (e.g. cents for scale 2). This is the canonical, safest constructor */
         public static function fromMinorUnits(int $amount, int $scale = self::DEFAULT_SCALE): self
+        {
+            return self::hydrate($amount, $scale);
+        }
+
+        /** Build from a float epressed as normall currncy units. */
+        public static function fromMajorUnits(float $amount, int $scale = self::DEFAULT_SCALE): self
         {
             return new self($amount, $scale);
         }
@@ -60,7 +93,7 @@
         {
             $minor = (int) round($amount * self::subunitFactor($scale));
 
-            return new self($minor, $scale);
+            return self::hydrate($minor, $scale);
         }
 
         /**
@@ -80,16 +113,16 @@
 
             if (self::hasBcmath()) {
                 $scaled = bcmul($amount, (string) $factor, 0);
-                return new self((int) $scaled, $scale);
+                return self::hydrate((int) $scaled, $scale);
             }
 
-            return new self((int) round((float) $amount * $factor), $scale);
+            return self::hydrate((int) round((float) $amount * $factor), $scale);
         }
 
         /** A zero-value Money at the given scale. Handy as a starting accumulator. */
         public static function zero(int $scale = self::DEFAULT_SCALE): self
         {
-            return new self(0, $scale);
+            return self::hydrate(0, $scale);
         }
 
         // -----------------------------------------------------------------
@@ -131,6 +164,16 @@
             return ($negative ? '-' : '') . $wholePart . '.' . $fractionPart;
         }
 
+        public function minorUnits(): int
+        {
+            return $this->amount;
+        }
+
+        public function majorUnits(): float
+        {
+            return $this->amount / 100;
+        }
+
         // -----------------------------------------------------------------
         // Scale conversion
         // -----------------------------------------------------------------
@@ -144,13 +187,13 @@
 
             if ($scale > $this->scale) {
                 $factor = self::subunitFactor($scale - $this->scale);
-                return new self($this->amount * $factor, $scale);
+                return self::hydrate($this->amount * $factor, $scale);
             }
 
             $factor = self::subunitFactor($this->scale - $scale);
             $rounded = (int) round($this->amount / $factor, 0, $roundingMode);
 
-            return new self($rounded, $scale);
+            return self::hydrate($rounded, $scale);
         }
 
         // -----------------------------------------------------------------
@@ -161,14 +204,14 @@
         {
             $this->assertSameScale($other, 'add');
 
-            return new self($this->amount + $other->amount, $this->scale);
+            return self::hydrate($this->amount + $other->amount, $this->scale);
         }
 
         public function subtract(Money $other): self
         {
             $this->assertSameScale($other, 'subtract');
 
-            return new self($this->amount - $other->amount, $this->scale);
+            return self::hydrate($this->amount - $other->amount, $this->scale);
         }
 
         /**
@@ -181,12 +224,12 @@
                 $result = bcmul((string) $this->amount, (string) $factor, 8);
                 $rounded = (int) round((float) $result, 0, $roundingMode);
 
-                return new self($rounded, $this->scale);
+                return self::hydrate($rounded, $this->scale);
             }
 
             $rounded = (int) round($this->amount * (float) $factor, 0, $roundingMode);
 
-            return new self($rounded, $this->scale);
+            return self::hydrate($rounded, $this->scale);
         }
 
         /**
@@ -201,7 +244,7 @@
 
             $rounded = (int) round($this->amount / (float) $divisor, 0, $roundingMode);
 
-            return new self($rounded, $this->scale);
+            return self::hydrate($rounded, $this->scale);
         }
 
         /** Return this amount minus/plus a percentage, e.g. percentage(10) returns 10% of the amount. */
@@ -212,12 +255,12 @@
 
         public function absolute(): self
         {
-            return new self(abs($this->amount), $this->scale);
+            return self::hydrate(abs($this->amount), $this->scale);
         }
 
         public function negate(): self
         {
-            return new self(-$this->amount, $this->scale);
+            return self::hydrate(-$this->amount, $this->scale);
         }
 
         /**
@@ -266,7 +309,7 @@
                 $i++;
             }
 
-            return array_map(fn (int $amount) => new self($amount, $this->scale), $shares);
+            return array_map(fn (int $amount) => self::hydrate($amount, $this->scale), $shares);
         }
 
         /** Split this amount into $n equal-as-possible parts. Convenience wrapper around allocate(). */

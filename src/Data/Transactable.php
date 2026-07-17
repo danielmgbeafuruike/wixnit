@@ -2942,6 +2942,14 @@
                     }
                     $this->$name->bindNames($entry["names"]);
                 }
+                else if($entry["kind"] === "masked")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new Masked();
+                    }
+                    $this->$name->bindMasker($entry["masker"]);
+                }
             }
         }
 
@@ -2974,6 +2982,13 @@
                     if(!isset($this->$name))
                     {
                         $this->$name = new FlagSet();
+                    }
+                }
+                else if($entry["kind"] === "masked")
+                {
+                    if(!isset($this->$name))
+                    {
+                        $this->$name = new Masked();
                     }
                 }
             }

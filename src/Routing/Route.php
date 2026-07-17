@@ -397,7 +397,7 @@
 
                 for($i = 0; $i < count($guards); $i++)
                 {
-                    if($guards[$i]->checkAccess($req))
+                    if($guards[$i]->checkAccess($req, $payLoads))
                     {
                         if($guards[$i] instanceof PayloadedGuard)
                         {
