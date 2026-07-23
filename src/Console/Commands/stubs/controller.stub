@@ -1,0 +1,19 @@
+<?php
+
+    namespace {{namespace}};
+
+    use Wixnit\App\Controller;
+    use Wixnit\Routing\Request;
+    use Wixnit\Routing\Response;
+
+    class {{class}} extends Controller
+    {
+        public function get(Request $req, array $args = []): Response | null
+        {
+            return $this->response->setContent("{{class}}::get()");
+        }
+
+        // public function create(Request $req, array $args = []): Response | null { ... }
+        // public function update(Request $req, array $args = []): Response | null { ... }
+        // public function delete(Request $req, array $args = []): Response | null { ... }
+    }

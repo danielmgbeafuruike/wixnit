@@ -1,0 +1,25 @@
+<?php
+
+    namespace {{namespace}};
+
+    use Wixnit\Console\Argument;
+    use Wixnit\Console\AsCommand;
+    use Wixnit\Console\Command;
+    use Wixnit\Console\Option;
+
+    #[AsCommand("{{name}}", description: "")]
+    class {{class}} extends Command
+    {
+        // #[Argument(description: "", default: null)]
+        // public ?string $name = null;
+
+        // #[Option(shortcut: "f", description: "")]
+        // public bool $force = false;
+
+        public function handle(): int
+        {
+            $this->io->info("{{name}} is running.");
+
+            return self::SUCCESS;
+        }
+    }

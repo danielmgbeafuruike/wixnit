@@ -1,0 +1,15 @@
+<?php
+
+    namespace {{namespace}};
+
+    use Wixnit\App\Model;
+    use Wixnit\Data\Fillable;
+
+    class {{class}} extends Model
+    {
+        // #[Fillable]
+        // public string $name = "";
+
+        // #[Fillable]
+        // public string $email = "";
+    }
