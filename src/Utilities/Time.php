@@ -2,6 +2,7 @@
 
 namespace Wixnit\Utilities;
 
+use JsonSerializable;
 use Stringable;
 use Wixnit\Enum\DBFieldType;
 use Wixnit\Interfaces\ISerializable;
@@ -15,7 +16,7 @@ use Wixnit\Interfaces\ISerializable;
  * add()/subtract() wrap around midnight, since a clock face is
  * cyclical — 23:30 plus 1 hour is 00:30, not "24:30".
  */
-final class Time implements ISerializable, Stringable
+final class Time implements ISerializable, Stringable, JsonSerializable
 {
     private const SECONDS_PER_DAY = 86400;
 
@@ -273,5 +274,10 @@ final class Time implements ISerializable, Stringable
     public function _deserialize($data): void
     {
         $this->init($data);
+    }
+
+    public function jsonSerialize(): string
+    {
+        return $this->format();
     }
 }

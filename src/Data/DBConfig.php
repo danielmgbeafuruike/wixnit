@@ -87,6 +87,34 @@ class DBConfig
             }
         }
 
+        //check $ENV
+        if(isset($_ENV['DB_HOST']) && isset($_ENV['DB_NAME']) && isset($_ENV['DB_USER']) && isset($_ENV['DB_PASS']))
+        {
+            $this->conn = new mysqli(
+                $_ENV['DB_HOST'],
+                $_ENV['DB_USER'],
+                $_ENV['DB_PASS'],
+                $_ENV['DB_NAME'],
+                isset($_ENV['DB_PORT']) ? (int) $_ENV['DB_PORT'] : null,
+            );
+            Container::set('db', $this);
+            return $this->conn;
+        }
+
+        //check Config
+        if(Config::Has('DB_HOST') && Config::Has('DB_NAME') && Config::Has('DB_USER') && Config::Has('DB_PASS'))
+        {
+            $this->conn = new mysqli(
+                Config::Get('DB_HOST'),
+                Config::Get('DB_USER'),
+                Config::Get('DB_PASS'),
+                Config::Get('DB_NAME'),
+                Config::Has('DB_PORT') ? (int) Config::Get('DB_PORT') : null,
+            );
+            Container::set('db', $this);
+            return $this->conn;
+        }
+
         // Finally, try global fallback
         if (isset($GLOBALS["WIXNIT_MYSQL_Connection_Credentials"])) {
             $cred = $GLOBALS["WIXNIT_MYSQL_Connection_Credentials"];
