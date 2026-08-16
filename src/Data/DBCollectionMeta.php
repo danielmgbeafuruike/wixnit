@@ -4,9 +4,10 @@
     
     class DBCollectionMeta
     {
-        public $pageSize = 0;
-        public $perPage = 0;
-        public $currentPage = 0;
+        public int $pageSize = 0;
+        public int $perPage = 0;
+        public int $currentPage = 0;
+        public $summary = [];
 
         function __construct($pageSize=0, $currentPage=0, $perPage=0)
         {

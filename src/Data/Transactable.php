@@ -877,23 +877,23 @@
                             {
                                 if(is_string($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = $this->$name;
+                                    $ret[strtolower($prop->baseName)] = $val;
                                 }
                                 else if(is_int($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = intval($this->$name);
+                                    $ret[strtolower($prop->baseName)] = intval($val);
                                 }
                                 else if(is_bool($val))
                                 {
-                                    $ret[strtolower($prop->baseName)] = Convert::ToInt($this->$name);
+                                    $ret[strtolower($prop->baseName)] = Convert::ToInt($val);
                                 }
                                 else if((is_float($val)) || (is_double($val)))
                                 {
-                                    $ret[strtolower($prop->baseName)] = doubleval($this->$name);
+                                    $ret[strtolower($prop->baseName)] = doubleval($val);
                                 }
                                 else
                                 {
-                                    $ret[strtolower($prop->baseName)] = $this->$name;
+                                    $ret[strtolower($prop->baseName)] = $val;
                                 }
                             }
                         }
@@ -1589,7 +1589,7 @@
                     $instanceMap = $instance->getMap();
                     $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
 
-                    $query = $query->join($instanceMap->dbPrep(), strtolower($this->map->publicProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
+                    $query = $query->join($this->removeRelationsFields($instanceMap->dbPrep(), $this->map->publicProperties[$i]->type), strtolower($this->map->publicProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
                 }
             }
             for($i = 0; $i < count($this->map->hiddenProperties); $i++)
@@ -1602,7 +1602,7 @@
                     $instanceMap = $instance->getMap();
                     $instanceName = strtolower(array_reverse(explode("\\", $instanceMap->name))[0]);
 
-                    $query = $query->join($instanceMap->dbPrep(), strtolower($this->map->hiddenProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
+                    $query = $query->join($this->removeRelationsFields($instanceMap->dbPrep(), $this->map->publicProperties[$i]->type), strtolower($this->map->hiddenProperties[$i]->baseName), $instanceName."id", DBJoin::LEFT);
                 }
             }
             return $query;
@@ -3169,6 +3169,36 @@
                 }
             }
             return $builder;
+        }
+
+
+        private function removeRelationsFields(ObjectMap $map, string $className): ObjectMap
+        {
+            $retMap = new ObjectMap();
+            $retMap->name = $map->name;
+
+            for($i = 0; $i < count($map->publicProperties); $i++)
+            {
+                if(RelationMap::get($className, $map->publicProperties[$i]->name) !== null)
+                {
+                    //a #[HasMany] relation (either flavor) has no column of its own on this
+                    //table - it's backed by a foreign key on the related model instead.
+                    continue;
+                }
+                $retMap->publicProperties[] = $map->publicProperties[$i];
+            }
+
+            for($i = 0; $i < count($map->hiddenProperties); $i++)
+            {
+                if(RelationMap::get($className, $map->hiddenProperties[$i]->name) !== null)
+                {
+                    //a #[HasMany] relation (either flavor) has no column of its own on this
+                    //table - it's backed by a foreign key on the related model instead.
+                    continue;
+                }
+                $retMap->hiddenProperties[] = $map->hiddenProperties[$i];
+            }
+            return $retMap;
         }
         #endregion
 
