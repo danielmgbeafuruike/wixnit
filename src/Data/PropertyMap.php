@@ -137,6 +137,11 @@
             return self::forClass($class)["searchable"];
         }
 
+        public static function getExcluded(string $class): array
+        {
+            return self::forClass($class)["excluded"];
+        }
+
         /**
          * Determines whether a given property name is allowed to be mass-assigned via
          * fill(), per the class's Fillable/Guarded strategy (mixed use of both was

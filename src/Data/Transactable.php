@@ -681,6 +681,17 @@
                 }
                 $ret[$prop] = $this->{$prop} ?? null;
             }
+
+            $attribExcluded = PropertyMap::getExcluded(get_class($this));
+
+            foreach($attribExcluded as $prop)
+            {
+                if(PropertyMap::isRedacted($className, $prop))
+                {
+                    continue;
+                }
+                $ret[$prop] = $this->{$prop} ?? null;
+            }
             return $ret;
         }
 
