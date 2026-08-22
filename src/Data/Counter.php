@@ -2,6 +2,7 @@
 
     namespace Wixnit\Data;
 
+    use Wixnit\App\PointerModel;
     use Wixnit\Enum\DBFieldType;
     use Wixnit\Interfaces\ISerializable;
     use Wixnit\Exception\PropertyException;
@@ -88,11 +89,25 @@
 
             if($by >= 0)
             {
-                $class::Increment($this->parent->getConnection(), $this->field, $by, new Filter([$idColumn => $this->parent->id]));
+                if($class instanceof PointerModel)
+                {
+                    $class::Increment($this->parent->getConnection(), $this->field, $by, new Filter([$idColumn => $this->parent->id]));
+                }
+                else
+                {
+                    $class::Increment($this->field, $by, new Filter([$idColumn => $this->parent->id]));
+                }
             }
             else
             {
-                $class::Decrement($this->parent->getConnection(), $this->field, -$by, new Filter([$idColumn => $this->parent->id]));
+                if($class instanceof PointerModel)
+                {
+                    $class::Decrement($this->parent->getConnection(), $this->field, -$by, new Filter([$idColumn => $this->parent->id]));
+                }
+                else
+                {
+                    $class::Decrement($this->field, -$by, new Filter([$idColumn => $this->parent->id]));
+                }
             }
             $this->value += $by;
             return $this;

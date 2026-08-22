@@ -383,7 +383,7 @@
         {
             if($this->connection === null)
             {
-                $this->connection = Container::get("db", DBConfig::class)->getConnection();
+                $this->connection = (new DBConfig())->getConnection();
             }
             return $this->connection;
         }

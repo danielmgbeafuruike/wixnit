@@ -673,6 +673,14 @@
                 }
                 $ret[$prop->name] = $this->{$prop->name} ?? null;
             }
+            foreach($this->excludes as $prop)
+            {
+                if(PropertyMap::isRedacted($className, $prop))
+                {
+                    continue;
+                }
+                $ret[$prop] = $this->{$prop} ?? null;
+            }
             return $ret;
         }
 
