@@ -36,6 +36,8 @@
             return null;
         }
 
+        public function list(): array { return []; }
+
         public function release(QueuedJob $job, int $delaySeconds): void
         {
             //no concept of "later" here; just try again right away

@@ -87,4 +87,11 @@
          * @return int the number of jobs discarded
          */
         public function flush(string $queue): int;
+
+
+        /**
+         * get all the quedjobs
+         * @return QueuedJob[]
+         */
+        public function list(): array;
     }

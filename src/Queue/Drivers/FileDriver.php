@@ -8,6 +8,7 @@
     use Wixnit\Interfaces\IQueueDriver;
     use Wixnit\Queue\QueuedJob;
     use Wixnit\Utilities\DateTime;
+    use Wixnit\Utilities\Directory;
 
     /**
      * Persists jobs to disk as one JSON file per job, so queued work survives between
@@ -71,6 +72,30 @@
                 }
             }
             return null;
+        }
+
+        public function list(): array
+        {
+            $ret = [];
+            $dirs = Directory::Directories($this->directory);
+
+            foreach($dirs as $dir)
+            {
+                $pendingDir = $this->pendingDir($dir);
+                $this->ensureDirectory($pendingDir);
+
+                $files = glob($pendingDir."/*.job") ?: [];
+
+                for($i = 0; $i < count($files); $i++)
+                {
+                    $data = $this->readJson($files[$i]);
+                    if($data !== null)
+                    {
+                        $ret[] = QueuedJob::FromArray($data);
+                    }
+                }
+            }
+            return $ret;
         }
 
         public function release(QueuedJob $job, int $delaySeconds): void

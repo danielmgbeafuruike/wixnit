@@ -69,6 +69,22 @@
             return $job;
         }
 
+        public function list(): array
+        {
+            $ret = [];
+
+            $keys = array_keys($this->list());
+
+            foreach($keys as $key)
+            {
+                for($i = 0; $i < count($this->queues[$key]); $i++)
+                {
+                    $ret[] = $this->queues[$key][$i];
+                }
+            }
+            return $ret;
+        }
+
         public function release(QueuedJob $job, int $delaySeconds): void
         {
             $job->availableAt = new DateTime(time() + max($delaySeconds, 0));

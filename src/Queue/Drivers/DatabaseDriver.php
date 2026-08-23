@@ -167,6 +167,27 @@
             return null;
         }
 
+        public function list(): array
+        {
+            $ret = [];
+            $stmt = $this->run(__METHOD__, "SELECT * FROM {$this->jobsTable}", "", []);
+
+            $r = $stmt->get_result();
+            
+            while(($row = $r->fetch_assoc()) != null)
+            {
+                $ret[] = QueuedJob::FromArray([
+                    "id" => $row["id"],
+                    "queue" => $row["queue"],
+                    "payload" => $row["payload"],
+                    "attempts" => (int) $row["attempts"],
+                    "createdAt" => (int) $row["created_at"],
+                    "availableAt" => (int) $row["available_at"],
+                ]);
+            }
+            return $ret;
+        }
+
         public function release(QueuedJob $job, int $delaySeconds): void
         {
             $job->availableAt = new DateTime(time() + max($delaySeconds, 0));
