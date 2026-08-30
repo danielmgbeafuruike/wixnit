@@ -1438,6 +1438,13 @@
                 $prop = $this->map->publicProperties[$i];
                 $name = $prop->baseName;
 
+                if(RelationMap::get(get_called_class(), $prop->name) !== null)
+                {
+                    //a #[HasMany] relation (either flavor) has no column of its own on this
+                    //table - it's backed by a foreign key on the related model instead.
+                    continue;
+                }
+
                 if((count($searchable) > 0) && (!in_array($prop->name, $searchable, true)))
                 {
                     //#[Searchable] narrows the default field list when at least one
